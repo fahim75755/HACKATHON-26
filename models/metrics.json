@@ -1,0 +1,225 @@
+{
+  "test_year": 2025,
+  "horizons": {
+    "h2": {
+      "lightgbm": {
+        "MAE": 1.0978,
+        "RMSE": 2.2244,
+        "tier_accuracy": 0.8779,
+        "high_critical_recall": 0.6275,
+        "high_critical_precision": 0.5749,
+        "rows": 3120,
+        "range_80_coverage": 0.8295
+      },
+      "negative_binomial_glm": {
+        "MAE": 1.8984,
+        "RMSE": 4.1544,
+        "tier_accuracy": 0.8032,
+        "high_critical_recall": 0.4444,
+        "high_critical_precision": 0.3864,
+        "rows": 3120
+      },
+      "same_week_last_year": {
+        "MAE": 1.4804,
+        "RMSE": 3.0078,
+        "tier_accuracy": 0.8141,
+        "high_critical_recall": 0.3595,
+        "high_critical_precision": 0.4215,
+        "rows": 3120
+      },
+      "persistence_cases_now": {
+        "MAE": 1.7337,
+        "RMSE": 3.4336,
+        "tier_accuracy": 0.7769,
+        "high_critical_recall": 0.3268,
+        "high_critical_precision": 0.3268,
+        "rows": 3120
+      },
+      "split": {
+        "train_rows": 24720,
+        "val_rows": 3180,
+        "test_rows": 3120,
+        "train_target_weeks": "2016-02-08 to 2023-12-25",
+        "val_target_weeks": "2024-01-01 to 2024-12-30",
+        "test_target_weeks": "2025-01-06 to 2025-12-29"
+      },
+      "best_iteration": {
+        "main": 549,
+        "q10": 455,
+        "q90": 311
+      },
+      "train_seconds": {
+        "lightgbm_3_models": 4.62,
+        "negbin": 0.23
+      },
+      "feature_importance_gain": {
+        "humid_mean_4w": 1095721.2,
+        "rain_sum_4w": 441186.8,
+        "rain_lag_1w": 112898.7,
+        "week_cos": 109151.9,
+        "water_logging_risk_index": 45137.7,
+        "rain_lag_0w": 36231.1,
+        "week_sin": 34085.9,
+        "temp_mean_4w": 21334.0,
+        "population_density_sqkm": 18313.0,
+        "rain_lag_2w": 16988.6,
+        "rain_lag_3w": 15163.7,
+        "rain_anom_4w": 11153.1,
+        "cases_mean_4w": 9470.1,
+        "sanitation_score": 8110.4,
+        "cases_now": 1489.3
+      }
+    },
+    "h3": {
+      "lightgbm": {
+        "MAE": 1.1256,
+        "RMSE": 2.2337,
+        "tier_accuracy": 0.8692,
+        "high_critical_recall": 0.6078,
+        "high_critical_precision": 0.5586,
+        "rows": 3120,
+        "range_80_coverage": 0.8224
+      },
+      "negative_binomial_glm": {
+        "MAE": 1.7639,
+        "RMSE": 3.6152,
+        "tier_accuracy": 0.791,
+        "high_critical_recall": 0.451,
+        "high_critical_precision": 0.392,
+        "rows": 3120
+      },
+      "same_week_last_year": {
+        "MAE": 1.4804,
+        "RMSE": 3.0078,
+        "tier_accuracy": 0.8141,
+        "high_critical_recall": 0.3595,
+        "high_critical_precision": 0.4215,
+        "rows": 3120
+      },
+      "persistence_cases_now": {
+        "MAE": 1.9856,
+        "RMSE": 3.8113,
+        "tier_accuracy": 0.7494,
+        "high_critical_recall": 0.2582,
+        "high_critical_precision": 0.2582,
+        "rows": 3120
+      },
+      "split": {
+        "train_rows": 24660,
+        "val_rows": 3180,
+        "test_rows": 3120,
+        "train_target_weeks": "2016-02-15 to 2023-12-25",
+        "val_target_weeks": "2024-01-01 to 2024-12-30",
+        "test_target_weeks": "2025-01-06 to 2025-12-29"
+      },
+      "best_iteration": {
+        "main": 452,
+        "q10": 354,
+        "q90": 250
+      },
+      "train_seconds": {
+        "lightgbm_3_models": 3.87,
+        "negbin": 0.23
+      },
+      "feature_importance_gain": {
+        "rain_lag_0w": 1174988.3,
+        "week_cos": 242976.3,
+        "humid_mean_4w": 138799.3,
+        "week_sin": 104551.9,
+        "rain_sum_4w": 90649.4,
+        "temp_mean_4w": 51726.8,
+        "water_logging_risk_index": 44726.2,
+        "rain_lag_1w": 30570.5,
+        "population_density_sqkm": 17221.4,
+        "rain_anom_4w": 14337.7,
+        "rain_lag_3w": 14328.7,
+        "cases_mean_4w": 14077.8,
+        "rain_lag_2w": 10215.2,
+        "sanitation_score": 7759.5,
+        "cases_now": 2940.8
+      }
+    },
+    "h4": {
+      "lightgbm": {
+        "MAE": 1.2188,
+        "RMSE": 2.3945,
+        "tier_accuracy": 0.851,
+        "high_critical_recall": 0.5131,
+        "high_critical_precision": 0.4659,
+        "rows": 3120,
+        "range_80_coverage": 0.867
+      },
+      "negative_binomial_glm": {
+        "MAE": 1.7979,
+        "RMSE": 3.5436,
+        "tier_accuracy": 0.7849,
+        "high_critical_recall": 0.4346,
+        "high_critical_precision": 0.3537,
+        "rows": 3120
+      },
+      "same_week_last_year": {
+        "MAE": 1.4804,
+        "RMSE": 3.0078,
+        "tier_accuracy": 0.8141,
+        "high_critical_recall": 0.3595,
+        "high_critical_precision": 0.4215,
+        "rows": 3120
+      },
+      "persistence_cases_now": {
+        "MAE": 2.1628,
+        "RMSE": 3.9993,
+        "tier_accuracy": 0.7231,
+        "high_critical_recall": 0.2451,
+        "high_critical_precision": 0.2451,
+        "rows": 3120
+      },
+      "split": {
+        "train_rows": 24600,
+        "val_rows": 3180,
+        "test_rows": 3120,
+        "train_target_weeks": "2016-02-22 to 2023-12-25",
+        "val_target_weeks": "2024-01-01 to 2024-12-30",
+        "test_target_weeks": "2025-01-06 to 2025-12-29"
+      },
+      "best_iteration": {
+        "main": 463,
+        "q10": 91,
+        "q90": 183
+      },
+      "train_seconds": {
+        "lightgbm_3_models": 2.92,
+        "negbin": 0.24
+      },
+      "feature_importance_gain": {
+        "week_cos": 922926.6,
+        "rain_lag_0w": 440490.5,
+        "week_sin": 170438.6,
+        "rain_sum_4w": 123327.3,
+        "temp_mean_4w": 119548.7,
+        "water_logging_risk_index": 44683.6,
+        "rain_lag_3w": 23090.1,
+        "rain_anom_4w": 18928.9,
+        "population_density_sqkm": 17530.7,
+        "humid_mean_4w": 16971.9,
+        "rain_lag_2w": 16154.8,
+        "rain_lag_1w": 11781.0,
+        "cases_mean_4w": 10482.1,
+        "sanitation_score": 7640.5,
+        "cases_now": 1034.3
+      }
+    }
+  },
+  "runtime": {
+    "total_train_seconds": 20.9,
+    "precompute_all_predictions_ms": 2964.1,
+    "precomputed_rows": 31140,
+    "single_whatif_prediction_ms": 25.53
+  },
+  "artifact_sizes_kb": {
+    "lgbm_h2.joblib": 1573.9,
+    "lgbm_h3.joblib": 1272.5,
+    "lgbm_h4.joblib": 966.8,
+    "features.parquet": 1310.2,
+    "predictions.parquet": 1257.8
+  }
+}

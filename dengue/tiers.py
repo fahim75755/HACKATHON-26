@@ -1,13 +1,19 @@
+"""Map predicted weekly cases to risk tiers and recommended actions."""
+
+# Low < 3 <= Medium < 9 <= High < 20 <= Critical  (weekly cases per ward)
+# In 2016-2025 data: ~71% Low, ~17% Medium, ~11% High, ~1% Critical.
 DEFAULT_THRESHOLDS = {
-    "medium": 2.0,    # 2 to < 5 weekly cases
-    "high": 5.0,      # 5 to < 10 weekly cases
-    "critical": 10.0, # >= 10 weekly cases (top ~10% surge)
+    "medium": 3.0,
+    "high": 9.0,
+    "critical": 20.0,
 }
+
+TIERS = ["Low", "Medium", "High", "Critical"]
 
 TIER_META = {
     "Low": {
         "color": "#2E7D32",
-        "action": "Routine larval surveillance and standard municipal waste collection.",
+        "action": "Routine larval surveillance and standard waste collection.",
     },
     "Medium": {
         "color": "#F9A825",
@@ -15,11 +21,11 @@ TIER_META = {
     },
     "High": {
         "color": "#EF6C00",
-        "action": "Deploy targeted ward fogging, larvicide teams, and alert local clinics.",
+        "action": "Deploy larvicide and fogging teams to this ward and alert local clinics.",
     },
     "Critical": {
         "color": "#C62828",
-        "action": "Activate emergency outbreak response, intensive vector control, and hospital surge beds.",
+        "action": "Activate outbreak response: intensive vector control, hospital surge beds, saline and test-kit stock.",
     },
 }
 
