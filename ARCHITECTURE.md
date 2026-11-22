@@ -19,7 +19,7 @@ flowchart LR
 ```
 
 ```
-Officer input (city, ward, date)
+Officer input (city or all cities, ward or all wards, date)
    -> date in data?  yes -> look up the 3 precomputed forecasts (no model call)
                      no  -> officer enters last 4 weeks of weather -> live prediction
    -> extra rain in the last 1-2 days? -> add it to this week's rain -> live prediction for all 3 horizons
@@ -83,4 +83,4 @@ Split by the **target week**, never shuffled:
 | External weather API | **none** - officers enter recent weather for new dates. If one is added: one call per city (5 cities), cached 1 hour, so ≤ 5 calls/hour regardless of users | 0 calls |
 | LLM | **none** in the forecast path. Any future LLM summary must be button-triggered, `max_tokens ≤ 300`, cached per (ward, week), with a daily token budget and off by default | 0 tokens |
 
-Timings are recorded by `train.py` in `models/metrics.json`; the "How it works" tab shows live load and forecast times.
+Timings are recorded by `train.py` in `models/metrics.json`.

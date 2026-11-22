@@ -29,7 +29,7 @@ The dashboard opens at http://localhost:8501.
 
 ```bash
 python train.py                         # ~20 s on a laptop CPU; rebuilds models/ and data/processed/
-python -m unittest discover -s tests -v # 18 tests: lags, leakage, split, baselines, outlook, watch flag, what-if
+python -m unittest discover -s tests -v # 19 tests: lags, leakage, split, baselines, outlook, watch flag, what-if
 ```
 
 ## Using the dashboard
@@ -38,20 +38,23 @@ The sidebar only takes input; everything else is output.
 
 | Input (sidebar) | Output |
 |---|---|
-| City, ward | Headline: e.g. "⚠ HIGH RISK in the next 2–4 weeks", cases now and the trend |
-| "Forecast from week of" date | Three cards: expected cases, 80% range and risk tier for 2, 3 and 4 weeks later |
-| What-if: extra rain in the last 1–2 days (mm) | Recommended action, driver chart (TreeSHAP), rain vs cases chart |
+| City: **All cities** or one of 5 | **All wards** (default): one tab each for **2, 3 and 4 weeks ahead** - headline such as "⚠ 23 of 60 wards HIGH or CRITICAL in the week of 28 Jul 2025", what to do with that much warning time, how reliable that lead time was in 2025, tier counts, per-city summary, a ward risk map (city x ward number) and a ranked ward list (CSV download) |
+| Ward: **All wards** or one ward | **One ward:** the same 2, 3 and 4-week tabs show only that ward (tab names show its tier, e.g. "2 weeks ahead · 28 Jul · 🟠 High") - expected cases and 80% range, cases now and trend, what to do, how reliable that lead time is, its rank among the wards, driver chart (TreeSHAP) for that week's model, and rain vs cases |
+| "Forecast from week of" date | All forecasts are made from this week's data |
+| What-if: extra rain in the last 1–2 days (mm) | Forecasts rerun live with the extra rain (in every ward shown) |
 
+* **Action by lead time:** 4 weeks ahead = *plan* (order saline, kits, larvicide; schedule teams);
+  3 weeks ahead = *stop the breeding* (drain water, clear containers - breaks the cycle);
+  2 weeks ahead = *respond* (fogging, alert clinics, free beds).
 * **Extra rain what-if:** rain that fell in the last day or two, not yet in the weekly record, is added to this
-  week's rain and the 3 forecasts rerun live. Example: DNCC_Ward_01 on 14 Jul 2025, +100 mm moves the 3-week
-  forecast from 8.4 (Medium) to 16.1 (High).
+  week's rain and the forecasts rerun live. Example: DNCC_Ward_01 on 14 Jul 2025, +100 mm moves the 3-week
+  forecast from 8.4 (Medium) to 16.1 (High); across all cities, High/Critical wards 3 weeks ahead go from 14 to 53 of 60.
 
 * **Watch flag:** "⚠ Could reach High" when the expected cases are lower but the top of the 80% range reaches High
   or Critical. On 2025 data this catches 91–95% of High/Critical weeks vs 51–63% from the expected value alone.
 * **Dates in the data (Jan 2016 - Dec 2025):** forecasts are looked up instantly; "Actually recorded" shows the real outcome.
 * **Dates after Dec 2025:** the officer enters the last 4 weeks of weather (pre-filled with the ward's seasonal normals) and the model predicts live.
-* **Wards to act on tab:** all 60 wards ranked by their highest risk in the next 2–4 weeks, tier counts, and a ward x week risk heatmap for the city.
-* **Accuracy tab (for reviewers):** 2025 test-year MAE / RMSE vs three baselines, and forecast vs actual for the selected ward.
+* **Accuracy tab (for reviewers):** 2025 test-year MAE / RMSE vs three baselines, and forecast vs actual for the selected ward (or the selected wards added up).
 
 ## Results on 2025 (held out: never used for training or tuning)
 
