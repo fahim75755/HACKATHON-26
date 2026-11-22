@@ -5,3 +5,8 @@ backgroundColor = "#F5F7F6"
 secondaryBackgroundColor = "#EDF4F4"
 textColor = "#16323B"
 font = "sans serif"
+
+[client]
+# Hide Streamlit's developer tools (Rerun, Clear cache, Print, Record screen, Deploy).
+# The menu keeps only the About entry set in app.py.
+toolbarMode = "minimal"

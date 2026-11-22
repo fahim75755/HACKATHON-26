@@ -27,6 +27,16 @@ st.set_page_config(
     page_title="XPO-DENGUE | Urban Early-Warning Portal",
     page_icon="🛡️",
     layout="wide",
+    menu_items={
+        "Get help": None,
+        "Report a bug": None,
+        "About": (
+            "**XPO-DENGUE** - ward-level dengue early warning for Bangladesh city corporations.\n\n"
+            "Forecasts weekly cases and risk tiers 2, 3 and 4 weeks ahead from the last 4 weeks of "
+            "rain, humidity, temperature and cases (LightGBM, tested on 2025 data it never saw). "
+            "Runs fully offline: no paid APIs, no LLM calls."
+        ),
+    },
 )
 
 ALL_CITIES, ALL_WARDS = "All cities", "All wards"
