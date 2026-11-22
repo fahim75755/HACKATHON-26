@@ -892,12 +892,13 @@ def ward_forecasts() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         fcs = engine.outlook(models, preds, features, ward, issue_week, X)
     else:
         weeks = engine.recent_weeks(features, ward, issue_week)
+        X = features[(features["ward_id"] == ward) & (features["date"] == issue_week)]
         if what_if:
+            # Adjust the stored feature row (works even when < 4 recorded weeks exist, e.g. Jan 2016)
             weeks = engine.add_recent_rain(weeks, extra_rain)
-            X = engine.build_row(features, ward, issue_week, weeks, traits)
+            X = engine.add_rain_to_features(X, extra_rain)
             fcs = engine.outlook(models, preds, features, ward, issue_week, X)
         else:
-            X = features[(features["ward_id"] == ward) & (features["date"] == issue_week)]
             fcs = engine.outlook(models, preds, features, ward, issue_week)
     return weeks, X, {f.horizon: f for f in fcs}
 

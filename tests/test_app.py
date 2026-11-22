@@ -48,6 +48,15 @@ class TestDashboard(unittest.TestCase):
         self.assertTrue(all(any(tier in x for tier in ("Low", "Medium", "High", "Critical")) for x in week_tabs),
                         week_tabs)
 
+    def test_one_ward_early_date_with_extra_rain(self):
+        """Regression: one ward + Feb 2016 + extra rain used to crash the page."""
+        at = self._run()
+        _select(at, ("Ward",), "CCC_Ward_03")
+        at.sidebar.date_input[0].set_value(dt.date(2016, 2, 1)).run()
+        at.sidebar.slider[0].set_value(100).run()
+        self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
+        self.assertEqual(len(at.tabs), 4)
+
     def test_future_date_uses_typed_weather(self):
         at = self._run()
         _select(at, ("Ward",), "DNCC_Ward_01")

@@ -106,11 +106,21 @@ def predict_table(models: dict, frows: pd.DataFrame, extra_rain_mm: float = 0.0)
     """
     from dengue.model import predict_all
 
+    return predict_all(add_rain_to_features(frows, extra_rain_mm), models).reset_index(drop=True)
+
+
+def add_rain_to_features(frows: pd.DataFrame, extra_rain_mm: float) -> pd.DataFrame:
+    """Add rain from the last 1-2 days to already-built feature rows.
+
+    Raises this week's rain, the 4-week total and the anomaly by the same amount - the same
+    result as add_recent_rain + build_row, but it also works in the first weeks of the data,
+    where fewer than 4 recorded weeks exist to rebuild the row from.
+    """
     rows = frows.copy()
     if extra_rain_mm:
         for c in ("rain_lag_0w", "rain_sum_4w", "rain_anom_4w"):
             rows[c] = rows[c].astype(float) + float(extra_rain_mm)
-    return predict_all(rows, models).reset_index(drop=True)
+    return rows
 
 
 def all_wards_outlook(preds: pd.DataFrame, issue_date) -> pd.DataFrame:
