@@ -1,4 +1,4 @@
-# XPO-DENGUE: Urban Dengue Early-Warning System
+# AlertAhead: Urban Dengue Early-Warning System
 
 Ward-level dengue forecasting for Bangladesh city corporations. A public health officer picks a
 **city, ward and date**; the app forecasts dengue cases **2, 3 and 4 weeks later** (all made on the same day),
@@ -42,7 +42,7 @@ The sidebar only takes input; everything else is output. The whole page switches
 | City: **All cities** or one of 5 | **All wards** (default): one tab each for **2, 3 and 4 weeks ahead** - headline such as "⚠ 23 of 60 wards HIGH or CRITICAL in the week of 28 Jul 2025", what to do with that much warning time, how reliable that lead time was in 2025, tier counts, per-city summary, a ward risk map (city x ward number) and a ranked ward list (CSV download) |
 | Ward: **All wards** or one ward | **One ward:** the same 2, 3 and 4-week tabs show only that ward (tab names show its tier, e.g. "2 weeks ahead · 28 Jul · 🟠 High") - expected cases and 80% range, cases now and trend, what to do, how reliable that lead time is, its rank among the wards, driver chart (TreeSHAP) for that week's model, and rain vs cases |
 | "Forecast from week of" date | All forecasts are made from this week's data |
-| What-if: extra rain in the last 1–2 days (mm), slider or typed number | Forecasts rerun live with the extra rain (in every ward shown) |
+| What-if: extra rain in the last 1–2 days (mm) | Forecasts rerun live with the extra rain (in every ward shown) |
 
 * **Action by lead time:** 4 weeks ahead = *plan* (order saline, kits, larvicide; schedule teams);
   3 weeks ahead = *stop the breeding* (drain water, clear containers - breaks the cycle);

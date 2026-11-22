@@ -1,4 +1,4 @@
-"""XPO-DENGUE - dashboard for public health officers (English / Bangla).
+"""AlertAhead - dengue early-warning dashboard for public health officers (English / Bangla).
 
 Run:  streamlit run app.py
 The officer picks a place (a city or all cities, a ward or all wards) and a date. The page has one
@@ -24,19 +24,9 @@ from dengue.model import load_artifacts
 from dengue.tiers import DEFAULT_THRESHOLDS, TIER_META, TIERS, assign_risk_tier
 
 st.set_page_config(
-    page_title="XPO-DENGUE | Urban Early-Warning Portal",
+    page_title="AlertAhead | Dengue Early-Warning",
     page_icon="🛡️",
     layout="wide",
-    menu_items={
-        "Get help": None,
-        "Report a bug": None,
-        "About": (
-            "**XPO-DENGUE** - ward-level dengue early warning for Bangladesh city corporations.\n\n"
-            "Forecasts weekly cases and risk tiers 2, 3 and 4 weeks ahead from the last 4 weeks of "
-            "rain, humidity, temperature and cases (LightGBM, tested on 2025 data it never saw). "
-            "Runs fully offline: no paid APIs, no LLM calls."
-        ),
-    },
 )
 
 ALL_CITIES, ALL_WARDS = "All cities", "All wards"
@@ -84,13 +74,27 @@ st.markdown(
         font-family: system-ui, -apple-system, 'Segoe UI', 'Nirmala UI', 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
     }}
 
+    /* No top bar: hide Streamlit's toolbar (menu, running/Stop indicator) and make the bar
+       see-through and click-through, so it takes no space. The sidebar's re-open arrow keeps working. */
     header[data-testid="stHeader"] {{
-        background-color: rgba(245, 247, 246, 0.92);
-        border-bottom: 1px solid #DCE5E3;
+        background: transparent !important;
+        border-bottom: none !important;
+        box-shadow: none !important;
+        pointer-events: none;
+    }}
+    header[data-testid="stHeader"] [data-testid="stExpandSidebarButton"],
+    header[data-testid="stHeader"] [data-testid="stSidebarCollapsedControl"] {{
+        pointer-events: auto;
+    }}
+    /* Hide only the menu, running/Stop indicator and Deploy - the toolbar itself stays, because
+       the sidebar's re-open arrow (stExpandSidebarButton) lives inside it. */
+    [data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stStatusWidget"],
+    [data-testid="stAppDeployButton"], [data-testid="stDecoration"] {{
+        display: none !important;
     }}
 
     .block-container {{
-        padding-top: 4.5rem;  /* clears Streamlit's fixed top bar (~3.75rem) so the brand bar isn't cut off */
+        padding-top: 1.5rem;
         padding-bottom: 3rem;
         max-width: 1260px;
     }}
@@ -149,30 +153,22 @@ st.markdown(
         gap: 12px;
         padding: 2px 0 6px 0;
     }}
-    .brand-mark {{
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        background: #0F4C5C;
-        color: #FFFFFF;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        font-size: 1.02rem;
-        letter-spacing: -0.4px;
-    }}
     .brand-title {{
-        font-size: 1.32rem;
+        font-size: 2.1rem;
         font-weight: 800;
         color: #0B252E;
-        letter-spacing: -0.4px;
+        letter-spacing: -0.6px;
         line-height: 1.1;
     }}
     .brand-sub {{
-        font-size: 0.83rem;
+        font-size: 1.05rem;
         color: #4D6670;
         font-weight: 500;
+        margin-top: 2px;
+    }}
+    @media (max-width: 768px) {{
+        .brand-title {{ font-size: 1.6rem; }}
+        .brand-sub {{ font-size: 0.92rem; }}
     }}
 
     /* Healthline-style Trust Strip */
@@ -363,9 +359,6 @@ TIER_ACTION_BN = {
     "High": "দ্রুত ফগিং ও লার্ভিসাইড স্প্রে শুরু করুন এবং এলাকার হাসপাতাল ও ক্লিনিকগুলোকে সতর্ক করুন।",
     "Critical": "জরুরি ভিত্তিতে মশক নিধন অভিযান চালান এবং হাসপাতালে শয্যা, স্যালাইন ও টেস্ট কিট প্রস্তুত রাখুন।",
 }
-TIER_COLOR_LOOKUP = {k: TIER_META[k]["color"] for k in TIERS}
-for k, bn_label in TIER_BN.items():
-    TIER_COLOR_LOOKUP[bn_label] = TIER_META[k]["color"]
 
 
 # ---------------------------------------------------------------- top header & language toggle
@@ -388,13 +381,14 @@ def n_cases(x: float) -> str:
 
 
 def headline_box(color: str, title: str, lines: list[str], action: str) -> None:
+    ink = next((m["ink"] for m in TIER_META.values() if m["color"] == color), color)
     body = "".join(f'<div style="margin-top:5px;color:#233D47;font-size:0.96rem;">{x}</div>' for x in lines)
     action_label = "সুপারিশকৃত পদক্ষেপ:" if is_bn else "Recommended action:"
     st.markdown(
         f"""<div style="padding:18px 22px;border-radius:14px;border:1px solid #DCE5E3;
         border-left:7px solid {color};background:#FFFFFF;box-shadow:0 6px 18px rgba(15,76,92,0.06);
         margin:6px 0 16px 0;">
-        <div style="font-size:1.3rem;font-weight:800;color:{color};line-height:1.25;">{title}</div>
+        <div style="font-size:1.3rem;font-weight:800;color:{ink};line-height:1.25;">{title}</div>
         {body}
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid #ECF2F0;color:#16323B;font-size:0.96rem;">
             <b>{action_label}</b> {action}
@@ -438,27 +432,13 @@ chosen_date = st.sidebar.date_input(
 st.sidebar.divider()
 st.sidebar.header("🌧️ " + ("আবহাওয়া সিমুলেটর (What-if)" if is_bn else "What-if Simulator"))
 
-if "extra_rain_slider" not in st.session_state:
-    st.session_state["extra_rain_slider"] = 0
-if "extra_rain_num" not in st.session_state:
-    st.session_state["extra_rain_num"] = 0
-
-
-def _sync_rain_from_slider() -> None:
-    st.session_state["extra_rain_num"] = int(st.session_state["extra_rain_slider"])
-
-
-def _sync_rain_from_num() -> None:
-    st.session_state["extra_rain_slider"] = int(st.session_state["extra_rain_num"])
-
-
-st.sidebar.slider(
+extra_rain = st.sidebar.slider(
     "গত ১–২ দিনের বাড়তি বৃষ্টি (মি.মি.)" if is_bn else "Extra rain in the last 1–2 days (mm)",
     min_value=0,
     max_value=200,
-    step=1,
+    value=0,
+    step=5,
     key="extra_rain_slider",
-    on_change=_sync_rain_from_slider,
     help=(
         "গত ১–২ দিনে হওয়া বাড়তি বৃষ্টি যা এখনো সাপ্তাহিক রেকর্ডে যোগ হয়নি। বাংলাদেশ আবহাওয়া অধিদপ্তরের মানদণ্ড (দৈনিক): ভারী ৪৪–৮৮ মি.মি., অতি ভারী ৮৯+ মি.মি.।"
         if is_bn
@@ -466,16 +446,6 @@ st.sidebar.slider(
              "It is added to this week's rain in every ward shown. Guide (Bangladesh Meteorological Dept., "
              "per day): heavy 44–88 mm, very heavy 89 mm or more."
     ),
-)
-extra_rain = int(
-    st.sidebar.number_input(
-        "সরাসরি বাড়তি বৃষ্টির পরিমাণ লিখুন (মি.মি.)" if is_bn else "Enter exact extra rain (mm)",
-        min_value=0,
-        max_value=200,
-        step=1,
-        key="extra_rain_num",
-        on_change=_sync_rain_from_num,
-    )
 )
 what_if = extra_rain > 0
 
@@ -496,9 +466,8 @@ with nav_left:
     st.markdown(
         f"""
         <div class="top-brand">
-            <div class="brand-mark">XD</div>
             <div>
-                <div class="brand-title">XPO-DENGUE</div>
+                <div class="brand-title">AlertAhead</div>
                 <div class="brand-sub">{brand_sub}</div>
             </div>
         </div>
@@ -581,7 +550,7 @@ if what_if:
     else:
         st.warning(
             f"What-if active: {extra_rain} mm of extra rain in the last 1–2 days, added to this week's rain"
-            f"{' in every ward' if overview else ''}. Set the slider or input box back to 0 to see the forecast from "
+            f"{' in every ward' if overview else ''}. Set the slider back to 0 to see the forecast from "
             "recorded weather."
         )
 
@@ -826,12 +795,15 @@ def render_horizon(h: int) -> None:
         else f"**Ranked list - act on the top rows first** ({n} wards)"
     )
     risk_col = "ঝুঁকি" if is_bn else "Risk"
+    # Ranked list: no colour fill - stars beside the tier (Medium 1, High 2, Critical 3, in red).
+    stars = {"Low": "", "Medium": "★", "High": "★★", "Critical": "★★★"}
+    risk_vals = [f"{t_tier(x)} {stars[x]}".strip() for x in t["tier"]]
     exp_col = "আনুমানিক রোগী" if is_bn else "Expected cases"
     if is_bn:
         table = pd.DataFrame({
             "শহর": t["city"],
             "ওয়ার্ড": t["ward_id"],
-            risk_col: t["tier"].map(t_tier),
+            risk_col: risk_vals,
             exp_col: t["cases"].round(1),
             "সম্ভাব্য রেঞ্জ": t["low"].round().astype(int).astype(str) + "–" + t["high"].round().astype(int).astype(str),
             "বর্তমান রোগী": t["cases_now_rec"].round().astype(int),
@@ -841,16 +813,18 @@ def render_horizon(h: int) -> None:
         table = pd.DataFrame({
             "City": t["city"],
             "Ward": t["ward_id"],
-            risk_col: t["tier"],
+            risk_col: risk_vals,
             exp_col: t["cases"].round(1),
             "Likely range": t["low"].round().astype(int).astype(str) + "–" + t["high"].round().astype(int).astype(str),
             "Cases now": t["cases_now_rec"].round().astype(int),
             "Watch": t["watch"].map(lambda w: f"⚠ could reach {w}" if w else ""),
         })
 
-    styled = table.style.map(
-        lambda x: f"background-color:{TIER_COLOR_LOOKUP.get(x, '#475569')};color:white;font-weight:700",
-        subset=[risk_col],
+    star_color = {"Medium": "#D93025", "High": "#D93025", "Critical": "#8C1D18"}
+    row_tiers = list(t["tier"])
+    styled = table.style.apply(
+        lambda col: [f"color:{star_color[x]};font-weight:700" if x in star_color else "" for x in row_tiers],
+        subset=[risk_col], axis=0,
     ).format({exp_col: "{:.1f}"})
     st.dataframe(styled, hide_index=True, height=380, key=f"rank_{h}")
     st.download_button(
@@ -862,7 +836,7 @@ def render_horizon(h: int) -> None:
     )
 
 
-DOT = {"Low": "🟢", "Medium": "🟡", "High": "🟠", "Critical": "🔴"}
+DOT = {"Low": "🟢", "Medium": "⭕", "High": "🔴", "Critical": "🚨"}  # no yellow/orange: light red -> red -> siren
 LEAD_WARD_EN = {
     2: "Send fogging and larvicide teams to this ward, alert its clinics and hospitals, and check beds, "
        "saline and test-kit stock.",
@@ -1095,7 +1069,7 @@ def render_ward_week(h: int, weeks: pd.DataFrame, X: pd.DataFrame, fc) -> None:
             fig.add_bar(
                 x=weeks["date"], y=weeks[RAIN_COL],
                 name="ব্যবহৃত বৃষ্টি (সিমুলেশন / ইনপুট)" if is_bn else "Rain used (what-if / entered)",
-                marker_color="rgba(239, 108, 0, 0.55)",
+                marker_color="rgba(15, 76, 92, 0.75)",
             )
         fig.add_scatter(
             x=hist["date"], y=hist[TARGET_COL],
@@ -1193,7 +1167,7 @@ def render_accuracy() -> None:
                 col_cov: r.get("range_80_coverage"),
             })
     table = pd.DataFrame(rows)
-    palette = ["#0F4C5C", "#2E938B", "#D9822B", "#94A3B8"]
+    palette = ["#0F4C5C", "#2E938B", "#6250D6", "#94A3B8"]
     fig = go.Figure()
     for idx, label in enumerate(names.values()):
         sub = table[table[col_mod] == label]
@@ -1252,7 +1226,7 @@ def render_accuracy() -> None:
     fig.add_scatter(
         x=w["target_date"], y=w[f"pred_h{vh}"],
         name="পূর্বাভাস" if is_bn else "Forecast",
-        line=dict(color="#EF6C00", width=2.2, dash="dash"),
+        line=dict(color="#D93025", width=2.2, dash="dash"),
     )
     fig.update_layout(
         **PLOTLY_LIGHT,
