@@ -97,9 +97,30 @@ def outlook(models: dict, preds: pd.DataFrame, features: pd.DataFrame, ward_id: 
     return out
 
 
+def predict_table(models: dict, frows: pd.DataFrame, extra_rain_mm: float = 0.0) -> pd.DataFrame:
+    """Live forecasts for many wards at once (one feature row per ward).
+
+    extra_rain_mm is rain from the last 1-2 days, added to every ward's current week:
+    it raises this week's rain, the 4-week total and the anomaly by the same amount,
+    exactly as add_recent_rain + build_row would for a single ward.
+    """
+    from dengue.model import predict_all
+
+    rows = frows.copy()
+    if extra_rain_mm:
+        for c in ("rain_lag_0w", "rain_sum_4w", "rain_anom_4w"):
+            rows[c] = rows[c].astype(float) + float(extra_rain_mm)
+    return predict_all(rows, models).reset_index(drop=True)
+
+
 def all_wards_outlook(preds: pd.DataFrame, issue_date) -> pd.DataFrame:
     """One row per ward: forecasts for +2/+3/+4 weeks, worst tier, peak week and watch flag."""
-    week = preds[preds["date"] == issue_date].copy()
+    return rank_wards(preds[preds["date"] == issue_date], issue_date)
+
+
+def rank_wards(week: pd.DataFrame, issue_date) -> pd.DataFrame:
+    """Rank wards by their worst tier (then peak cases) over the next 2-4 weeks."""
+    week = week.copy()
     for h in HORIZONS:
         week[f"tier_h{h}"] = [assign_risk_tier(v) for v in week[f"pred_h{h}"]]
     pred_cols = [f"pred_h{h}" for h in HORIZONS]

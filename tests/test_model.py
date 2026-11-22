@@ -88,6 +88,21 @@ class TestTrainedEngine(unittest.TestCase):
         self.assertEqual(len(allw), self.feat["ward_id"].nunique())
         self.assertTrue((allw["tier_rank"].diff().dropna() <= 0).all())
 
+    def test_predict_table_matches_precomputed_and_single_ward_path(self):
+        date = pd.Timestamp("2025-07-14")
+        frows = self.feat[self.feat["date"] == date]
+        live = engine.predict_table(self.models, frows).set_index("ward_id")
+        saved = self.preds[self.preds["date"] == date].set_index("ward_id")
+        for h in HORIZONS:
+            np.testing.assert_allclose(live.loc[saved.index, f"pred_h{h}"], saved[f"pred_h{h}"], rtol=1e-4, atol=1e-4)
+        # City-wide extra rain gives the same forecast as the single-ward what-if path
+        ward = "DNCC_Ward_01"
+        wet_all = engine.predict_table(self.models, frows, extra_rain_mm=100).set_index("ward_id")
+        weeks = engine.add_recent_rain(engine.recent_weeks(self.feat, ward, date), 100)
+        X = engine.build_row(self.feat, ward, date, weeks, engine.ward_traits(self.feat, ward))
+        for f in engine.outlook(self.models, self.preds, self.feat, ward, date, X):
+            self.assertAlmostEqual(float(wet_all.loc[ward, f"pred_h{f.horizon}"]), f.cases, places=2)
+
     def test_extra_recent_rain_raises_later_forecast_in_monsoon(self):
         ward, date = "DNCC_Ward_01", pd.Timestamp("2025-07-14")
         weeks = engine.recent_weeks(self.feat, ward, date)
