@@ -80,7 +80,7 @@ st.markdown(
     }}
 
     .block-container {{
-        padding-top: 2rem;
+        padding-top: 4.5rem;  /* clears Streamlit's fixed top bar (~3.75rem) so the brand bar isn't cut off */
         padding-bottom: 3rem;
         max-width: 1260px;
     }}
