@@ -1,8 +1,9 @@
 """Task 4 - dashboard for public health officers.
 
 Run:  streamlit run app.py
-Officer picks a place (city, ward) and a date; the app forecasts dengue cases
-2, 3 or 4 weeks later, the risk tier, the recommended action and the main drivers.
+The officer picks a place (city, ward) and a date. The app shows the dengue forecast
+for 2, 3 and 4 weeks later, the risk tier for each, an early-warning headline, the
+recommended action, the main drivers, and which wards to act on first.
 """
 import json
 import time
@@ -18,7 +19,7 @@ from dengue.config import (
     TARGET_COL, TEMP_COL,
 )
 from dengue.model import load_artifacts
-from dengue.tiers import DEFAULT_THRESHOLDS, TIER_META, TIERS
+from dengue.tiers import DEFAULT_THRESHOLDS, TIER_META, TIERS, assign_risk_tier
 
 st.set_page_config(page_title="Dengue Early-Warning", page_icon="🦟", layout="wide")
 
@@ -49,61 +50,51 @@ load_ms = (time.perf_counter() - t_load) * 1000
 
 data_start, data_end = features["date"].min(), features["date"].max()
 
-# ---------------------------------------------------------------- sidebar inputs
+
+def tier_badge(tier: str) -> str:
+    return (f'<span style="background:{TIER_META[tier]["color"]};color:#fff;padding:2px 10px;'
+            f'border-radius:12px;font-weight:700;font-size:0.85rem">{tier.upper()}</span>')
+
+
+# ---------------------------------------------------------------- sidebar: inputs only
 st.sidebar.header("📍 Place and date")
 cities = sorted(features["city"].unique())
 city = st.sidebar.selectbox("City", cities, index=cities.index("Dhaka North"))
 wards = sorted(features.loc[features["city"] == city, "ward_id"].unique())
 ward = st.sidebar.selectbox("Ward", wards)
-
 chosen_date = st.sidebar.date_input(
     "Forecast from week of",
     value=pd.Timestamp("2025-07-14").date(),
     min_value=data_start.date(),
     max_value=pd.Timestamp("2027-12-31").date(),
-    help="Data runs from %s to %s. For later dates you enter recent weather yourself."
+    help="Recorded data runs from %s to %s. For later dates you enter the recent weather yourself."
     % (data_start.date(), data_end.date()),
 )
-horizon = st.sidebar.segmented_control(
-    "Weeks ahead", HORIZONS, default=3, required=True,
-    format_func=lambda h: f"{h} weeks",
+
+st.sidebar.divider()
+st.sidebar.header("🌧️ What-if")
+extra_rain = st.sidebar.slider(
+    "Extra rain in the last 1–2 days (mm)", 0, 200, 0, step=10,
+    help="Rain that fell in the last day or two and is not in the weekly record yet. "
+         "It is added to this week's rain. Guide (Bangladesh Meteorological Dept., per day): "
+         "heavy 44–88 mm, very heavy 89 mm or more.",
 )
+what_if = extra_rain > 0
 
 issue_week = engine.snap_to_week(features, ward, pd.Timestamp(chosen_date))
 manual_mode = issue_week is None
-traits_base = engine.ward_traits(features, ward)
-
-st.sidebar.divider()
-st.sidebar.header("⚡ What-if")
-st.sidebar.caption("Change recent weather or ward conditions and see the forecast update.")
-rain_pct = st.sidebar.slider("Rain change, last 4 weeks (%)", -80, 200, 0, step=10)
-humid_delta = st.sidebar.slider("Humidity change (points)", -20, 20, 0, step=2)
-temp_delta = st.sidebar.slider("Temperature change (°C)", -4.0, 4.0, 0.0, step=0.5)
-wl = st.sidebar.slider("Water-logging risk", 0.0, 1.0, round(traits_base["water_logging_risk_index"], 2),
-                       step=0.01, key=f"wl_{ward}")
-san = st.sidebar.slider("Sanitation score", 0.0, 1.0, round(traits_base["sanitation_score"], 2),
-                        step=0.01, key=f"san_{ward}")
-traits = {**traits_base, "water_logging_risk_index": wl, "sanitation_score": san}
-what_if = (
-    rain_pct != 0 or humid_delta != 0 or temp_delta != 0
-    or abs(wl - traits_base["water_logging_risk_index"]) > 0.005
-    or abs(san - traits_base["sanitation_score"]) > 0.005
-)
+traits = engine.ward_traits(features, ward)
 
 # ---------------------------------------------------------------- header
 st.title("🦟 Urban Dengue Early-Warning")
-st.caption(
-    f"{city} · {ward} · LightGBM forecasts from weather of the last 4 weeks "
-    f"(rain needs 2–4 weeks to become mosquitoes and then cases)."
-)
 
-# ---------------------------------------------------------------- build forecast
-artifact = models[horizon]
+# ---------------------------------------------------------------- build the 2/3/4-week outlook
 t_pred = time.perf_counter()
 if manual_mode:
     issue_week = pd.Timestamp(chosen_date)
+    st.caption(f"{city} · {ward} · dengue risk for the 2–4 weeks after {issue_week:%d %b %Y}")
     st.info(
-        f"No recorded weather for {issue_week.date()} (data ends {data_end.date()}). "
+        f"No recorded weather for {issue_week:%d %b %Y} (data ends {data_end:%d %b %Y}). "
         "Enter the last 4 weeks below - pre-filled with this ward's usual values for this time of year."
     )
     normals = engine.seasonal_normals(features, ward, issue_week)
@@ -116,100 +107,148 @@ if manual_mode:
         column_config={"Week of": st.column_config.DateColumn(format="YYYY-MM-DD")},
     )
     weeks = edited.rename(columns={
-        "Rain (mm)": RAIN_COL, "Humidity (%)": HUMID_COL,
+        "Week of": "date", "Rain (mm)": RAIN_COL, "Humidity (%)": HUMID_COL,
         "Avg temp (°C)": TEMP_COL, "Reported cases": TARGET_COL,
     })
-    weeks = engine.apply_what_if(weeks, rain_pct, humid_delta, temp_delta)
+    weeks = engine.add_recent_rain(weeks, extra_rain)
     X = engine.build_row(features, ward, issue_week, weeks, traits)
-    fc = engine.predict_live(artifact, X, issue_week)
+    fcs = engine.outlook(models, preds, features, ward, issue_week, X)
 else:
+    st.caption(f"{city} · {ward} · dengue risk for the 2–4 weeks after {issue_week:%d %b %Y}")
     weeks = engine.recent_weeks(features, ward, issue_week)
-    frow = features[(features["ward_id"] == ward) & (features["date"] == issue_week)]
     if what_if:
-        weeks = engine.apply_what_if(weeks, rain_pct, humid_delta, temp_delta)
+        weeks = engine.add_recent_rain(weeks, extra_rain)
         X = engine.build_row(features, ward, issue_week, weeks, traits)
-        fc = engine.predict_live(artifact, X, issue_week, frow[f"target_h{horizon}"].iloc[0])
+        fcs = engine.outlook(models, preds, features, ward, issue_week, X)
     else:
-        X = frow
-        fc = engine.lookup(preds, features, ward, issue_week, horizon)
+        X = features[(features["ward_id"] == ward) & (features["date"] == issue_week)]
+        fcs = engine.outlook(models, preds, features, ward, issue_week)
 pred_ms = (time.perf_counter() - t_pred) * 1000
 
 if what_if:
-    st.warning(
-        f"What-if active: rain {rain_pct:+d}%, humidity {humid_delta:+d}, temperature {temp_delta:+.1f}°C, "
-        f"water-logging {wl:.2f}, sanitation {san:.2f}"
-    )
+    st.warning(f"What-if active: {extra_rain} mm of extra rain in the last 1–2 days, added to this week's "
+               f"{float(weeks[RAIN_COL].iloc[-1]) - extra_rain:.0f} mm. Set the slider back to 0 to see the "
+               "forecast from recorded weather.")
 
 tab_ward, tab_map, tab_valid, tab_about = st.tabs(
-    ["📍 Ward forecast", "🗺️ All wards", "📊 Model validation", "ℹ️ How it works"]
+    ["📍 Ward forecast", "🗺️ Wards to act on", "📊 Accuracy (for reviewers)", "ℹ️ How it works"]
 )
 
 # ---------------------------------------------------------------- tab 1: ward forecast
 with tab_ward:
-    st.subheader(
-        f"Forecast for week of {fc.target_date.date()}  "
-        f"({horizon} weeks after {fc.issue_date.date()})"
-    )
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Expected cases", f"{fc.cases:.1f}", border=True)
-    c2.metric("Likely range (80%)", f"{fc.low:.0f} – {fc.high:.0f}", border=True)
-    c3.metric("Risk tier", fc.tier, border=True)
-    if fc.actual is not None and not what_if:
-        c4.metric("What actually happened", f"{fc.actual:.0f} cases", border=True,
-                  help="Recorded cases in that week (shown for past dates, to check the model).")
+    now_cases = float(weeks[TARGET_COL].iloc[-1])
+    now_tier = assign_risk_tier(now_cases)
+    peak = max(fcs, key=lambda f: f.cases)
+    worst = peak.tier
+    watch_flags = [f.watch for f in fcs if f.watch and TIERS.index(f.watch) > TIERS.index(worst)]
+    watch = max(watch_flags, key=TIERS.index) if watch_flags else None
+    last = fcs[-1].cases
+    if last >= now_cases * 1.25 and last - now_cases >= 1:
+        trend = "rising ↑"
+    elif last <= now_cases * 0.8 and now_cases - last >= 1:
+        trend = "falling ↓"
     else:
-        c4.metric("Weeks of warning", f"{horizon}", border=True)
+        trend = "steady →"
+
+    when = f"week of {peak.target_date:%d %b} ({peak.horizon} weeks from now)"
+    if worst in ("High", "Critical"):
+        title = f"⚠ {worst.upper()} RISK in the next 2–4 weeks"
+        detail = f"Peak of about {peak.cases:.0f} cases in the {when}."
+        color, action = TIER_META[worst]["color"], TIER_META[worst]["action"]
+    elif watch:
+        title = f"⚠ WATCH - could reach {watch.upper()} in the next 2–4 weeks"
+        detail = (f"Expected {worst} (up to {peak.cases:.0f} cases), but the likely range reaches {watch}. "
+                  "Keep teams ready and check again next week.")
+        color = TIER_META[watch]["color"]
+        action = f"{TIER_META[worst]['action']} <b>If it rises:</b> {TIER_META[watch]['action']}"
+    elif worst == "Medium":
+        title = "MEDIUM RISK in the next 2–4 weeks"
+        detail = f"Peak of about {peak.cases:.0f} cases in the {when}."
+        color, action = TIER_META[worst]["color"], TIER_META[worst]["action"]
+    else:
+        title = "✓ LOW RISK - no outbreak expected in the next 4 weeks"
+        detail = ("Under 1 case a week expected." if peak.cases < 1
+                  else f"At most about {peak.cases:.0f} cases a week.")
+        color, action = TIER_META[worst]["color"], TIER_META[worst]["action"]
 
     st.markdown(
-        f"""<div style="padding:12px 16px;border-radius:8px;border-left:6px solid {fc.color};
-        background:rgba(128,128,128,0.10);margin:4px 0 14px 0;">
-        <b style="color:{fc.color}">{fc.tier.upper()} RISK</b> &nbsp;·&nbsp; {ward}, {city}<br/>
-        <b>Recommended action:</b> {fc.action}</div>""",
+        f"""<div style="padding:14px 18px;border-radius:10px;border-left:8px solid {color};
+        background:rgba(128,128,128,0.10);margin:4px 0 16px 0;">
+        <div style="font-size:1.35rem;font-weight:800;color:{color}">{title}</div>
+        <div style="margin-top:4px">{detail}</div>
+        <div style="margin-top:4px;opacity:0.85">Now: <b>{now_cases:.0f} cases</b> this week
+        ({now_tier}) &nbsp;·&nbsp; trend over the next 4 weeks: <b>{trend}</b></div>
+        <div style="margin-top:8px"><b>Recommended action:</b> {action}</div></div>""",
         unsafe_allow_html=True,
     )
 
+    cols = st.columns(len(fcs))
+    for col, fc in zip(cols, fcs):
+        with col.container(border=True):
+            st.markdown(f"**In {fc.horizon} weeks** · week of {fc.target_date:%d %b %Y}")
+            st.markdown(
+                f'<div style="font-size:2.2rem;font-weight:800;line-height:1.1">{fc.cases:.1f}'
+                f'<span style="font-size:1rem;font-weight:400"> cases</span></div>'
+                f'<div style="margin:6px 0">{tier_badge(fc.tier)}</div>',
+                unsafe_allow_html=True,
+            )
+            st.caption(f"Likely range (80%): {fc.low:.0f} – {fc.high:.0f} cases")
+            if fc.watch:
+                st.markdown(f":orange[**⚠ Could reach {fc.watch}**]")
+            if fc.actual is not None and not what_if:
+                st.caption(f"Actually recorded: **{fc.actual:.0f} cases** ({assign_risk_tier(fc.actual)})")
+
     left, right = st.columns([1, 1.15])
     with left:
-        st.markdown("**Why this forecast** - what pushes cases up or down")
-        drv, base = engine.drivers(artifact, X)
+        st.markdown(f"**Why** - what drives the {peak.horizon}-week forecast (the highest of the three)")
+        rain_sum = float(X["rain_sum_4w"].iloc[0])
+        rain_normal = rain_sum - float(X["rain_anom_4w"].iloc[0])
+        if rain_normal > 1:
+            ratio = rain_sum / rain_normal
+            word = "wetter than usual" if ratio > 1.15 else "drier than usual" if ratio < 0.85 else "about usual"
+            st.caption(f"🌧️ Rain over the last 4 weeks: **{rain_sum:.0f} mm**, {ratio:.1f}× this ward's "
+                       f"usual for this time of year ({word}).")
+        drv, base = engine.drivers(models[peak.horizon], X)
+        icons = {"Rain": "🌧️", "Unusually": "🌧️", "Humidity": "💧", "Temperature": "🌡️", "Season": "📅",
+                 "Cases": "🦟", "Population": "🏘️", "Water": "🏘️", "Sanitation": "🏘️"}
+        drv["label"] = [next((i for k, i in icons.items() if d.startswith(k)), "") + " " + d for d in drv["driver"]]
         drv = drv.iloc[::-1]
         colors = ["#C62828" if v > 0 else "#2E7D32" for v in drv["effect_cases"]]
         span = max(drv["effect_cases"].abs().max(), 0.5)
         fig = go.Figure(go.Bar(
-            x=drv["effect_cases"], y=drv["driver"], orientation="h", marker_color=colors,
+            x=drv["effect_cases"], y=drv["label"], orientation="h", marker_color=colors,
             text=[f"{v:+.1f}" for v in drv["effect_cases"]], textposition="outside", cliponaxis=False,
             hovertemplate="%{y}: %{x:+.2f} cases<extra></extra>",
         ))
         fig.update_layout(
             height=360, margin=dict(l=10, r=40, t=10, b=10),
-            xaxis=dict(title=f"Cases added (+) or removed (−) vs a baseline of {base:.1f}",
+            xaxis=dict(title=f"Cases added (red) / removed (green) vs a typical week ({base:.1f})",
                        range=[-span * 1.25 if (drv["effect_cases"] < 0).any() else 0, span * 1.25]),
         )
         st.plotly_chart(fig)
+        st.caption("🌧️💧🌡️ weather · 🏘️ ward conditions · 📅 time of year · 🦟 recent cases")
     with right:
-        st.markdown("**Rain and cases** - shaded weeks are the inputs to this forecast")
-        hist = features[(features["ward_id"] == ward) & (features["date"] <= fc.issue_date)].tail(20)
+        st.markdown("**Rain and cases** - shaded weeks are the inputs; diamonds are the 2, 3 and 4-week forecasts")
+        hist = features[(features["ward_id"] == ward) & (features["date"] <= issue_week)].tail(20)
         fig = go.Figure()
-        fig.add_bar(x=hist["date"], y=hist[RAIN_COL], name="Rain (mm)",
-                    marker_color="rgba(100,181,246,0.40)")
+        fig.add_bar(x=hist["date"], y=hist[RAIN_COL], name="Rain (mm)", marker_color="rgba(100,181,246,0.40)")
         if manual_mode or what_if:
-            fig.add_bar(x=weeks["date"] if "date" in weeks else weeks["Week of"], y=weeks[RAIN_COL],
-                        name="Rain used (what-if / entered)",
+            fig.add_bar(x=weeks["date"], y=weeks[RAIN_COL], name="Rain used (what-if / entered)",
                         marker_color="rgba(239,108,0,0.55)")
         fig.add_scatter(x=hist["date"], y=hist[TARGET_COL], name="Cases", mode="lines+markers",
                         line=dict(color="#F06292", width=3), yaxis="y2")
-        future = features[(features["ward_id"] == ward) & (features["date"] > fc.issue_date)
-                          & (features["date"] <= fc.target_date)]
-        if len(future):
+        future = features[(features["ward_id"] == ward) & (features["date"] > issue_week)
+                          & (features["date"] <= fcs[-1].target_date)]
+        if len(future) and not what_if:
             fig.add_scatter(x=future["date"], y=future[TARGET_COL], name="Cases (actual, later)",
                             mode="lines+markers", line=dict(color="#B0BEC5", dash="dot"), yaxis="y2")
         fig.add_scatter(
-            x=[fc.target_date], y=[fc.cases], mode="markers", name=f"Forecast (+{horizon} wk)", yaxis="y2",
-            marker=dict(color=fc.color, size=14, symbol="diamond"),
-            error_y=dict(type="data", symmetric=False, array=[fc.high - fc.cases],
-                         arrayminus=[fc.cases - fc.low], color=fc.color),
+            x=[f.target_date for f in fcs], y=[f.cases for f in fcs], mode="markers", name="Forecast",
+            yaxis="y2", marker=dict(color=[f.color for f in fcs], size=14, symbol="diamond"),
+            error_y=dict(type="data", symmetric=False, array=[f.high - f.cases for f in fcs],
+                         arrayminus=[f.cases - f.low for f in fcs], color="#9E9E9E"),
         )
-        fig.add_vrect(x0=fc.issue_date - pd.Timedelta(days=24), x1=fc.issue_date + pd.Timedelta(days=3),
+        fig.add_vrect(x0=issue_week - pd.Timedelta(days=24), x1=issue_week + pd.Timedelta(days=3),
                       fillcolor="rgba(30,136,229,0.10)", line_width=0)
         fig.update_layout(
             height=360, margin=dict(l=10, r=10, t=10, b=10), barmode="overlay",
@@ -219,55 +258,57 @@ with tab_ward:
         )
         st.plotly_chart(fig)
 
-    with st.expander("Weather used for this forecast (last 4 weeks)"):
-        show = weeks.copy()
-        show_cols = [c for c in ["date", "Week of", RAIN_COL, HUMID_COL, TEMP_COL, TARGET_COL] if c in show]
-        st.dataframe(show[show_cols], hide_index=True)
-
-# ---------------------------------------------------------------- tab 2: all wards
+# ---------------------------------------------------------------- tab 2: wards to act on
 with tab_map:
     if manual_mode:
-        st.info("The all-ward view uses recorded data. Pick a date up to %s." % data_end.date())
+        st.info(f"This view uses recorded data. Pick a date up to {data_end:%d %b %Y}.")
     else:
-        st.subheader(f"Which wards to target first - forecast for {fc.target_date.date()}")
-        week = preds[preds["date"] == fc.issue_date].copy()
-        week["Expected cases"] = week[f"pred_h{horizon}"].round(1)
-        week["Range"] = week[f"low_h{horizon}"].round(0).astype(int).astype(str) + "–" + \
-            week[f"high_h{horizon}"].round(0).astype(int).astype(str)
-        week["Risk tier"] = [engine.assign_risk_tier(v) for v in week[f"pred_h{horizon}"]]
-        k = st.columns(4)
+        st.subheader(f"Wards to act on - forecasts made {issue_week:%d %b %Y} for the next 2–4 weeks")
+        if what_if:
+            st.caption("Uses recorded weather for every ward (the what-if only changes the selected ward).")
+        allw = engine.all_wards_outlook(preds, issue_week)
+        k = st.columns(5)
         for col, tier in zip(k, reversed(TIERS)):
-            col.metric(f"{tier} wards", int((week["Risk tier"] == tier).sum()), border=True)
+            col.metric(f"{tier} wards", int((allw["worst_tier"] == tier).sum()), border=True,
+                       help=f"Wards whose highest forecast in the next 2–4 weeks is {tier}.")
+        k[4].metric("Watch", int(allw["watch"].notna().sum()), border=True,
+                    help="Expected lower, but the likely range reaches High or Critical.")
 
-        st.markdown(f"**Ward heatmap - {city}**, forecasts issued over the last 16 weeks")
-        recent = preds[(preds["city"] == city) & (preds["date"] <= fc.issue_date)]
-        recent = recent[recent["date"] > fc.issue_date - pd.Timedelta(weeks=16)]
-        grid = recent.pivot(index="ward_id", columns="date", values=f"pred_h{horizon}")
-        tier_idx = np.vectorize(lambda v: TIERS.index(engine.assign_risk_tier(v)))(grid.to_numpy())
+        st.markdown("**Ranked list - act on the top rows first** (all 60 wards)")
+        table = pd.DataFrame({
+            "City": allw["city"], "Ward": allw["ward_id"],
+            "Highest risk": allw["worst_tier"],
+            "Peak cases": allw["peak_cases"].round(1),
+            "Peak week": allw["peak_week"].dt.strftime("%d %b %Y"),
+            **{f"In {h} wk": allw[f"pred_h{h}"].round(1) for h in HORIZONS},
+            "Watch": allw["watch"].map(lambda w: f"⚠ could reach {w}" if isinstance(w, str) else ""),
+        })
+        styled = table.style.map(
+            lambda t: f"background-color:{TIER_META[t]['color']};color:white;font-weight:700",
+            subset=["Highest risk"],
+        ).format({c: "{:.1f}" for c in ["Peak cases"] + [f"In {h} wk" for h in HORIZONS]})
+        st.dataframe(styled, hide_index=True, height=380)
+
+        st.markdown(f"**Ward heatmap - {city}**: risk tier for each of the next 2–4 weeks")
+        cw = allw[allw["city"] == city].sort_values("peak_cases")
+        z = np.array([[TIERS.index(t) for t in cw[f"tier_h{h}"]] for h in HORIZONS]).T
+        txt = [[f"{v:.1f}" for v in r] for r in cw[[f"pred_h{h}" for h in HORIZONS]].to_numpy(dtype=float)]
         colors = [TIER_META[t]["color"] for t in TIERS]
         scale = []
         for i, c in enumerate(colors):
             scale += [[i / len(colors), c], [(i + 1) / len(colors), c]]
         fig = go.Figure(go.Heatmap(
-            z=tier_idx, x=[f"{(d + pd.Timedelta(weeks=horizon)).date()}" for d in grid.columns],
-            y=grid.index, zmin=-0.5, zmax=len(TIERS) - 0.5, colorscale=scale,
-            text=np.round(grid.to_numpy(), 1), texttemplate="%{text}",
-            hovertemplate="%{y}<br>week of %{x}<br>expected %{text} cases<extra></extra>",
+            z=z, x=[f"In {h} weeks<br>{issue_week + pd.Timedelta(weeks=h):%d %b}" for h in HORIZONS],
+            y=cw["ward_id"], zmin=-0.5, zmax=len(TIERS) - 0.5, colorscale=scale,
+            text=txt, texttemplate="%{text}", xgap=2, ygap=2,
+            hovertemplate="%{y}<br>%{x}<br>expected %{text} cases<extra></extra>",
             colorbar=dict(tickvals=list(range(len(TIERS))), ticktext=TIERS, title="Tier"),
         ))
-        fig.update_layout(height=max(300, 26 * len(grid) + 80), margin=dict(l=10, r=10, t=10, b=10),
-                          xaxis_title="Forecast week")
+        fig.update_layout(height=max(300, 26 * len(cw) + 90), margin=dict(l=10, r=10, t=10, b=10),
+                          xaxis=dict(side="top"))
         st.plotly_chart(fig)
 
-        st.markdown("**All 60 wards, highest risk first**")
-        st.dataframe(
-            week.sort_values("Expected cases", ascending=False)[
-                ["city", "ward_id", "Risk tier", "Expected cases", "Range"]
-            ].rename(columns={"city": "City", "ward_id": "Ward"}),
-            hide_index=True, height=320,
-        )
-
-# ---------------------------------------------------------------- tab 3: validation
+# ---------------------------------------------------------------- tab 3: accuracy (reviewers)
 with tab_valid:
     st.subheader(f"How accurate is it? Tested on {metrics['test_year']} (never used in training)")
     st.caption("Train: target weeks up to 2023 · Tune / early stopping: 2024 · Test: 2025. "
@@ -300,18 +341,19 @@ with tab_valid:
         "80% range coverage": st.column_config.NumberColumn(format="percent"),
     })
 
-    st.markdown(f"**{ward}: forecast vs actual through {metrics['test_year']}** ({horizon} weeks ahead)")
-    w_pred = preds[preds["ward_id"] == ward][["date", f"pred_h{horizon}", f"low_h{horizon}", f"high_h{horizon}"]].copy()
-    w_pred["target_date"] = w_pred["date"] + pd.Timedelta(weeks=horizon)
+    vh = 3
+    st.markdown(f"**{ward}: {vh}-week forecast vs actual through {metrics['test_year']}**")
+    w_pred = preds[preds["ward_id"] == ward][["date", f"pred_h{vh}", f"low_h{vh}", f"high_h{vh}"]].copy()
+    w_pred["target_date"] = w_pred["date"] + pd.Timedelta(weeks=vh)
     w_act = features[features["ward_id"] == ward][["date", TARGET_COL]]
     w = w_pred.merge(w_act, left_on="target_date", right_on="date", suffixes=("", "_t"))
     w = w[w["target_date"].dt.year == metrics["test_year"]]
     fig = go.Figure()
-    fig.add_scatter(x=w["target_date"], y=w[f"high_h{horizon}"], line=dict(width=0), showlegend=False, hoverinfo="skip")
-    fig.add_scatter(x=w["target_date"], y=w[f"low_h{horizon}"], line=dict(width=0), fill="tonexty",
+    fig.add_scatter(x=w["target_date"], y=w[f"high_h{vh}"], line=dict(width=0), showlegend=False, hoverinfo="skip")
+    fig.add_scatter(x=w["target_date"], y=w[f"low_h{vh}"], line=dict(width=0), fill="tonexty",
                     fillcolor="rgba(239,108,0,0.18)", name="80% range")
     fig.add_scatter(x=w["target_date"], y=w[TARGET_COL], name="Actual", line=dict(color="#F06292", width=2))
-    fig.add_scatter(x=w["target_date"], y=w[f"pred_h{horizon}"], name="Forecast", line=dict(color="#EF6C00", dash="dash"))
+    fig.add_scatter(x=w["target_date"], y=w[f"pred_h{vh}"], name="Forecast", line=dict(color="#EF6C00", dash="dash"))
     fig.update_layout(height=320, margin=dict(l=10, r=10, t=10, b=10), yaxis_title="Weekly cases",
                       legend=dict(orientation="h", y=1.15))
     st.plotly_chart(fig)
@@ -320,9 +362,12 @@ with tab_valid:
 with tab_about:
     t = DEFAULT_THRESHOLDS
     st.markdown(f"""
-**What goes in:** city, ward, a date, and how many weeks ahead (2, 3 or 4).
-The app takes that ward's rain, humidity, temperature and reported cases for the 4 weeks
-up to the date, plus ward traits (population density, water-logging risk, sanitation).
+**What goes in:** city, ward and a date. The app takes that ward's rain, humidity, temperature
+and reported cases for the 4 weeks up to the date, plus ward traits (population density,
+water-logging risk, sanitation).
+
+**What comes out:** expected cases and risk tier for **2, 3 and 4 weeks later**, all made on the same
+day from the same data, plus a headline, the recommended action and the main drivers.
 
 **Why weeks of delay:** rain fills drains and containers; Aedes eggs need 7–14 days to become
 mosquitoes, then the virus incubates. In this data, cases follow rain most strongly about 3 weeks later.
@@ -333,11 +378,19 @@ quantile models for the 80% range. Drivers come from LightGBM's built-in TreeSHA
 **Risk tiers (weekly cases per ward):** Low < {t['medium']:.0f} ≤ Medium < {t['high']:.0f} ≤ High
 < {t['critical']:.0f} ≤ Critical.
 
+**Watch flag:** shown when the expected cases are below High but the top of the 80% range reaches
+High or Critical. On 2025 data this catches 91–95% of High/Critical weeks, compared with 51–63%
+from the expected value alone, at the cost of more false alarms.
+
 **Cost:** models load once per server; normal forecasts are looked up from a precomputed table;
-the model only runs live for what-if changes or new weather. No paid APIs and no LLM calls.
+the model only runs live for the extra-rain what-if or newly entered weather. No paid APIs and no LLM calls.
+
+**What-if, extra rain in the last 1–2 days:** rain that fell after the weekly record was made is added to this
+week's rain, and all three forecasts are recomputed live. Its biggest effect is on the 3 and 4-week forecasts,
+because new breeding water needs that long to turn into cases.
 """)
     rt = metrics["runtime"]
     st.caption(
-        f"This page: data + models ready in {load_ms:.0f} ms (cached), forecast in {pred_ms:.1f} ms "
-        f"({fc.source}). Training all models: {rt['total_train_seconds']} s."
+        f"This page: data + models ready in {load_ms:.0f} ms (cached), 3 forecasts in {pred_ms:.1f} ms "
+        f"({fcs[0].source}). Training all models: {rt['total_train_seconds']} s."
     )

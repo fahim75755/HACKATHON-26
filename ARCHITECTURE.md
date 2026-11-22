@@ -15,15 +15,16 @@ flowchart LR
     G --> J[engine.py<br/>lookup · live what-if · TreeSHAP drivers]
     I --> J
     H --> K
-    J --> K[app.py · Streamlit dashboard<br/>city · ward · date · 2/3/4 weeks]
+    J --> K[app.py · Streamlit dashboard<br/>city · ward · date → 2, 3 and 4-week outlook]
 ```
 
 ```
-Officer input (city, ward, date, weeks ahead)
-   -> date in data?  yes -> look up precomputed forecast (no model call)
+Officer input (city, ward, date)
+   -> date in data?  yes -> look up the 3 precomputed forecasts (no model call)
                      no  -> officer enters last 4 weeks of weather -> live prediction
-   -> what-if slider moved? -> rebuild the 4-week inputs -> live prediction (~25 ms)
-   -> forecast + 80% range -> risk tier -> recommended action + driver chart
+   -> extra rain in the last 1-2 days? -> add it to this week's rain -> live prediction for all 3 horizons
+   -> for 2, 3 and 4 weeks: forecast + 80% range -> risk tier (+ watch flag if the range reaches High)
+   -> headline (worst tier, peak week, trend) -> recommended action + driver chart
 ```
 
 ## 2. Features: the "breeding clock" without future data
