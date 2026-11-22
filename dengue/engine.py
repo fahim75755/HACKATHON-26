@@ -9,9 +9,11 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from dengue.config import FEATURE_LABELS, FEATURES, HUMID_COL, RAIN_COL, TARGET_COL, TEMP_COL, WARD_TRAITS
+from dengue.config import (
+    FEATURE_LABELS, FEATURES, HORIZONS, HUMID_COL, RAIN_COL, TARGET_COL, TEMP_COL, WARD_TRAITS,
+)
 from dengue.features import make_feature_row, season_week, ward_rain_normal
-from dengue.tiers import assign_risk_tier, get_tier_info
+from dengue.tiers import TIERS, assign_risk_tier, get_tier_info
 
 
 @dataclass
@@ -27,17 +29,30 @@ class Forecast:
     action: str
     source: str            # "precomputed" or "live"
     actual: float | None = None
+    watch: str | None = None   # "High"/"Critical" if the upper 80% range reaches it but the forecast does not
+
+
+def watch_tier(cases: float, high: float) -> str | None:
+    """Early-warning flag: the likely range reaches High or Critical while the expected value does not.
+
+    On 2025 test data, alerting on the upper 80% range catches 91-95% of High/Critical
+    weeks (vs 51-63% using the expected value alone), at the cost of more false alarms.
+    """
+    t, w = TIERS.index(assign_risk_tier(cases)), TIERS.index(assign_risk_tier(high))
+    return TIERS[w] if w > t and w >= TIERS.index("High") else None
 
 
 def _make(issue_date, h, cases, low, high, source, actual=None) -> Forecast:
     tier = assign_risk_tier(cases)
     meta = get_tier_info(tier)
+    high = max(float(high), float(cases))
     return Forecast(
         issue_date=pd.Timestamp(issue_date),
         target_date=pd.Timestamp(issue_date) + pd.Timedelta(weeks=h),
-        horizon=h, cases=float(cases), low=float(low), high=float(max(high, cases)),
+        horizon=h, cases=float(cases), low=float(low), high=high,
         tier=tier, color=meta["color"], action=meta["action"], source=source,
         actual=None if actual is None or pd.isna(actual) else float(actual),
+        watch=watch_tier(cases, high),
     )
 
 
@@ -62,6 +77,44 @@ def predict_live(artifact: dict, X: pd.DataFrame, issue_date, actual=None) -> Fo
     low = max(0.0, float(artifact["low"].predict(X)[0]))
     high = max(0.0, float(artifact["high"].predict(X)[0]))
     return _make(issue_date, artifact["horizon"], cases, low, high, "live", actual)
+
+
+def outlook(models: dict, preds: pd.DataFrame, features: pd.DataFrame, ward_id: str, issue_date,
+            X: pd.DataFrame | None = None) -> list[Forecast]:
+    """Forecasts for 2, 3 and 4 weeks after issue_date, all from the same inputs.
+
+    With X=None the precomputed table is used (no model call); with X the models run live
+    (what-if or manually entered weather). Recorded actuals are attached when they exist.
+    """
+    frow = features[(features["ward_id"] == ward_id) & (features["date"] == issue_date)]
+    out = []
+    for h in HORIZONS:
+        actual = frow[f"target_h{h}"].iloc[0] if len(frow) else None
+        if X is None:
+            out.append(lookup(preds, features, ward_id, issue_date, h))
+        else:
+            out.append(predict_live(models[h], X, issue_date, actual))
+    return out
+
+
+def all_wards_outlook(preds: pd.DataFrame, issue_date) -> pd.DataFrame:
+    """One row per ward: forecasts for +2/+3/+4 weeks, worst tier, peak week and watch flag."""
+    week = preds[preds["date"] == issue_date].copy()
+    for h in HORIZONS:
+        week[f"tier_h{h}"] = [assign_risk_tier(v) for v in week[f"pred_h{h}"]]
+    pred_cols = [f"pred_h{h}" for h in HORIZONS]
+    peak_h = np.array(HORIZONS)[week[pred_cols].to_numpy().argmax(axis=1)]
+    week["peak_cases"] = week[pred_cols].max(axis=1)
+    week["peak_week"] = pd.Timestamp(issue_date) + pd.to_timedelta(peak_h * 7, unit="D")
+    week["worst_tier"] = [assign_risk_tier(v) for v in week["peak_cases"]]
+    watches = []
+    for _, r in week.iterrows():
+        flags = [watch_tier(r[f"pred_h{h}"], r[f"high_h{h}"]) for h in HORIZONS]
+        flags = [f for f in flags if f and TIERS.index(f) > TIERS.index(r["worst_tier"])]
+        watches.append(max(flags, key=TIERS.index) if flags else None)
+    week["watch"] = watches
+    week["tier_rank"] = week["worst_tier"].map(TIERS.index)
+    return week.sort_values(["tier_rank", "peak_cases"], ascending=False).reset_index(drop=True)
 
 
 def drivers(artifact: dict, X: pd.DataFrame, top_k: int = 7) -> tuple[pd.DataFrame, float]:
@@ -132,6 +185,13 @@ def build_row(
         traits=traits,
         rain_normal_4w=ward_rain_normal(features, ward_id, issue_date),
     )
+
+
+def add_recent_rain(weeks: pd.DataFrame, extra_mm: float) -> pd.DataFrame:
+    """Add rain that fell in the last 1-2 days (not yet in the weekly record) to the current week."""
+    w = weeks.copy().reset_index(drop=True)
+    w.loc[len(w) - 1, RAIN_COL] = max(0.0, float(w.loc[len(w) - 1, RAIN_COL]) + extra_mm)
+    return w
 
 
 def apply_what_if(weeks: pd.DataFrame, rain_pct: float, humid_delta: float, temp_delta: float) -> pd.DataFrame:

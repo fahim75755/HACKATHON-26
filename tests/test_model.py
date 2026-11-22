@@ -19,6 +19,12 @@ class TestTiers(unittest.TestCase):
         self.assertEqual(assign_risk_tier(20.0), "Critical")
         self.assertIn("action", get_tier_info("Critical"))
 
+    def test_watch_flag(self):
+        self.assertEqual(engine.watch_tier(7.0, 14.0), "High")      # Medium, range reaches High
+        self.assertEqual(engine.watch_tier(12.0, 25.0), "Critical")  # High, range reaches Critical
+        self.assertIsNone(engine.watch_tier(1.0, 5.0))               # only reaches Medium: no flag
+        self.assertIsNone(engine.watch_tier(10.0, 15.0))             # already High
+
 
 class TestTrainedEngine(unittest.TestCase):
     @classmethod
@@ -66,6 +72,32 @@ class TestTrainedEngine(unittest.TestCase):
         table, base = engine.drivers(art, row, top_k=len(FEATURES))
         pred = float(art["main"].predict(row[FEATURES])[0])
         self.assertAlmostEqual(base + table["effect_cases"].sum(), pred, places=3)
+
+    def test_outlook_gives_three_horizons_from_same_day(self):
+        row = self.feat.iloc[5000]
+        fcs = engine.outlook(self.models, self.preds, self.feat, row["ward_id"], row["date"])
+        self.assertEqual([f.horizon for f in fcs], list(HORIZONS))
+        self.assertTrue(all(f.issue_date == row["date"] for f in fcs))
+        live = engine.outlook(self.models, self.preds, self.feat, row["ward_id"], row["date"],
+                              self.feat.iloc[[5000]])
+        for a, b in zip(fcs, live):
+            self.assertAlmostEqual(a.cases, b.cases, places=3)
+
+    def test_all_wards_outlook_ranked(self):
+        allw = engine.all_wards_outlook(self.preds, pd.Timestamp("2025-07-14"))
+        self.assertEqual(len(allw), self.feat["ward_id"].nunique())
+        self.assertTrue((allw["tier_rank"].diff().dropna() <= 0).all())
+
+    def test_extra_recent_rain_raises_later_forecast_in_monsoon(self):
+        ward, date = "DNCC_Ward_01", pd.Timestamp("2025-07-14")
+        weeks = engine.recent_weeks(self.feat, ward, date)
+        traits = engine.ward_traits(self.feat, ward)
+        wet = engine.add_recent_rain(weeks, 100)
+        self.assertAlmostEqual(float(wet["rainfall_mm"].iloc[-1]), float(weeks["rainfall_mm"].iloc[-1]) + 100, places=3)
+        self.assertEqual(wet["rainfall_mm"].iloc[:-1].tolist(), weeks["rainfall_mm"].iloc[:-1].tolist())
+        base = engine.predict_live(self.models[3], engine.build_row(self.feat, ward, date, weeks, traits), date)
+        more = engine.predict_live(self.models[3], engine.build_row(self.feat, ward, date, wet, traits), date)
+        self.assertGreater(more.cases, base.cases)
 
     def test_what_if_more_rain_raises_risk_in_monsoon(self):
         ward = self.feat["ward_id"].iloc[0]
