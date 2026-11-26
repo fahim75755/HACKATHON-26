@@ -103,6 +103,16 @@ class TestTrainedEngine(unittest.TestCase):
         for f in engine.outlook(self.models, self.preds, self.feat, ward, date, X):
             self.assertAlmostEqual(float(wet_all.loc[ward, f"pred_h{f.horizon}"]), f.cases, places=2)
 
+    def test_extra_rain_works_in_first_weeks_of_data(self):
+        """Regression: one ward + Feb 2016 + extra rain crashed (fewer than 4 recorded weeks)."""
+        ward = "CCC_Ward_03"
+        date = self.feat["date"].min() + pd.Timedelta(weeks=1)
+        frow = self.feat[(self.feat["ward_id"] == ward) & (self.feat["date"] == date)]
+        pd.testing.assert_frame_equal(engine.add_rain_to_features(frow, 0), frow)
+        fcs = engine.outlook(self.models, self.preds, self.feat, ward, date, engine.add_rain_to_features(frow, 100))
+        self.assertEqual([f.horizon for f in fcs], list(HORIZONS))
+        self.assertTrue(all(f.cases >= 0 for f in fcs))
+
     def test_extra_recent_rain_raises_later_forecast_in_monsoon(self):
         ward, date = "DNCC_Ward_01", pd.Timestamp("2025-07-14")
         weeks = engine.recent_weeks(self.feat, ward, date)
