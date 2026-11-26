@@ -22,6 +22,7 @@ from dengue.config import (
 )
 from dengue.model import load_artifacts
 from dengue.tiers import DEFAULT_THRESHOLDS, TIER_META, TIERS, assign_risk_tier
+from dengue.ui_extras import render_historical_replay_and_ethics, render_map_and_dispatch
 
 st.set_page_config(
     page_title="XPO-DENGUE | Urban Early-Warning Portal",
@@ -1300,6 +1301,8 @@ for h, tab in zip(HORIZONS, tabs):
                 )
         else:
             render_horizon(h)
+            render_map_and_dispatch(h, week_tbl, features, issue_week, is_bn)
 
 with tabs[-1]:
     render_accuracy()
+    render_historical_replay_and_ethics(preds, features, is_bn)
