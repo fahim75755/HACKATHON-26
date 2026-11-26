@@ -3,7 +3,10 @@
 Ward-level dengue forecasting for Bangladesh city corporations. A public health officer picks a
 **city, ward and date**; the app forecasts dengue cases **2, 3 and 4 weeks later** (all made on the same day),
 assigns a risk tier (Low / Medium / High / Critical) to each, gives an early-warning headline and recommended
-action, and shows **which weather factors drive the forecast**.
+action, and shows **which weather factors drive the forecast**. It then helps decide **where to send a limited
+number of fogging / larvicide teams** this week.
+
+**Live demo:** https://edu-hackathon-26-alert-ahead-dengue-coming.streamlit.app/
 
 Rain does not cause cases the next day: water must stand for 7-14 days for Aedes eggs to become
 mosquitoes, then the virus incubates. In this data, cases follow rain most strongly **about 3 weeks
@@ -11,7 +14,7 @@ later** (correlation 0.75 vs 0.53 for same-week rain). The system uses that dela
 
 ## Quickstart (under 3 minutes)
 
-Requires **Python 3.11-3.13**. Trained models and precomputed forecasts are included, so no training is needed to run the app.
+Requires **Python 3.11-3.13** (tested on 3.12 locally and 3.13 on Streamlit Community Cloud). Trained models and precomputed forecasts are included, so no training is needed to run the app.
 
 ```bash
 git clone https://github.com/fahim75755/HACKATHON-26.git
@@ -29,7 +32,7 @@ The dashboard opens at http://localhost:8501.
 
 ```bash
 python train.py                         # ~20 s on a laptop CPU; rebuilds models/ and data/processed/
-python -m unittest discover -s tests -v # 25 tests: lags, leakage, split, baselines, outlook, watch flag, what-if, dashboard (English/Bangla)
+python -m unittest discover -s tests -v # 31 tests: lags, leakage, split, baselines, outlook, watch flag, what-if, team dispatch, backtest, dashboard (English/Bangla)
 ```
 
 ## Using the dashboard
@@ -57,6 +60,24 @@ The sidebar only takes input; everything else is output. The whole page switches
 * **Dates after Dec 2025:** the officer enters the last 4 weeks of weather (pre-filled with the ward's seasonal normals) and the model predicts live.
 * **Accuracy tab (for reviewers):** 2025 test-year MAE / RMSE vs three baselines, and forecast vs actual for the selected ward (or the selected wards added up).
 
+### Field operations (in every 2, 3 and 4-week tab, all-wards view)
+
+* **Ward risk map:** all 60 wards on a street, light or satellite map, coloured by tier and sized by expected cases.
+  Ward positions are approximate reference points inside each city (the dataset has no coordinates).
+* **Smart team dispatch:** set how many fogging / survey teams are available; AlertAhead picks the wards that cover
+  the most expected cases (or, in *vulnerability* mode, weights them by population density and water-logging).
+  Officers can **pin** or **exclude** wards, every plan goes to an audit log, and a Bangla / English **SMS alert**
+  text is generated for copying.
+* **Live weather check (optional button):** fetches the next 7 days of rain, temperature and humidity for a city
+  from Open-Meteo and warns if values fall outside the range the model was trained on. It is shown for context only:
+  it does **not** change the forecasts. If the internet is unavailable, offline backup values are shown instead.
+* **Quick field report:** officers type what they saw (Bangla or English); notes mentioning larvae, standing water,
+  blocked drains, tyres and similar are flagged as a *Citizen Signal* on the map. Notes never change the ML forecast
+  and are kept only for the current browser session.
+* **Dispatch replay (Accuracy tab):** for every 2025 week, compares sending teams to AlertAhead's top wards vs
+  splitting them evenly vs perfect hindsight. With 10 teams across 60 wards, AlertAhead's picks covered
+  **22-23%** of the real 2025 cases vs **16.7%** for an even split; perfect hindsight would reach **30.3%**.
+
 ## Results on 2025 (held out: never used for training or tuning)
 
 | Weeks ahead | LightGBM MAE | Neg. binomial GLM | Same week last year | This week's cases | LightGBM tier accuracy | 80% range coverage |
@@ -79,10 +100,15 @@ dengue/model.py        LightGBM per horizon + quantile range models, evaluation 
 dengue/analysis.py     Metrics and baselines: negative binomial GLM, last year, persistence (Task 2)
 dengue/tiers.py        Risk tiers and recommended actions (Task 2)
 dengue/engine.py       Lookups, live what-if predictions, driver breakdown (Tasks 3-4)
+dengue/ops.py          Ward map positions, team allocator, 2025 dispatch backtest, live weather, field-report flags, SMS text
+dengue/ui_extras.py    Dashboard sections for the risk map, team dispatch, live weather, field reports and dispatch replay
 data/raw/              Source dataset (31,320 rows, 60 wards, weekly 2016-2025)
 data/processed/        features.parquet, predictions.parquet (generated)
 models/                lgbm_h2/h3/h4.joblib, metrics.json (generated)
 tests/                 Unit tests
+packages.txt           System library for LightGBM on Streamlit Community Cloud (libgomp1)
+.devcontainer/         One-click GitHub Codespaces setup
+.streamlit/config.toml Theme and toolbar settings
 ARCHITECTURE.md        Data flow, validation split, model choice, cost controls
 ```
 
@@ -91,12 +117,17 @@ ARCHITECTURE.md        Data flow, validation split, model choice, cost controls
 | Member | GitHub | Area |
 |---|---|---|
 | Fahim | fahim75755 | Risk prediction engine (Task 2) |
-| Omar Faruk Naim | naim2003programming | User interface (Task 4) |
+| Omar Faruk Naim | naim2003programming | User interface (Task 4), field operations: map, team dispatch, backtest |
+| _OkIttehad_ | OkIttehad | _add area_ |
 
 ## AI assistants and external APIs (disclosure)
 
 * **Claude (Anthropic), via Claude Code** - used to review the dataset, design and write the multi-horizon
   feature pipeline, training code, baselines, tests, dashboard changes and documentation.
 * **Other AI assistants used by team members:** _team members add any other tools here (name and what it was used for)._
-* **External APIs:** none. The app runs fully offline: no weather API and no LLM calls at runtime.
+* **External APIs (all free, no API key, nothing sent about patients):**
+  * **Open-Meteo** weather forecast - only when an officer clicks "Fetch Live 7-Day Weather"; cached 30 minutes
+    per city, 3.5 s timeout, offline backup values if it fails. Display only; forecasts never depend on it.
+  * **Map tiles** from OpenStreetMap, CARTO and Esri World Imagery - loaded by the viewer's browser for the ward map.
+  * **No LLM calls** at runtime. Forecasts, tiers, drivers and dispatch all run locally from the saved models.
 * **Open-source libraries:** pandas, NumPy, LightGBM, scikit-learn, statsmodels, Streamlit, Plotly, PyArrow, joblib.
