@@ -1,4 +1,0 @@
-To: COMM-CCC-01
-
-[RED] CCC_Ward_01
-AlertAhead CCC-01 wk 21Jul: exp 12 cases HIGH. Saline 43/45 Kits 21/22. Beds 4/4. Crews 1. RED: request 2 saline, 1 kit.

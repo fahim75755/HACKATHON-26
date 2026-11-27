@@ -1,0 +1,16 @@
+AlertAhead SMS queue · Narayanganj · 5 message(s), most urgent first
+
+[RED] NCC_Ward_01 -> HC-NCC-01
+AlertAhead HCM NCC-01 wk 21Jul: exp 10 cases HIGH. Beds 3/3. Saline 36/38 Kits 18/19. RED: request 2 saline, 1 kit.
+
+[RED] NCC_Ward_05 -> HC-NCC-05
+AlertAhead HCM NCC-05 wk 21Jul: exp 13 cases HIGH. Beds 4/4. Saline 33/44 Kits 17/22. RED: request 11 saline, 5 kits.
+
+[SHORTFALL] NCC_Ward_02 -> HC-NCC-02
+AlertAhead HCM NCC-02 wk 21Jul: exp 7 cases MEDIUM. Beds 2/2. Saline 8/26 Kits 4/13. Short 18 saline, 9 kits.
+
+[SHORTFALL] NCC_Ward_03 -> HC-NCC-03
+AlertAhead HCM NCC-03 wk 21Jul: exp 8 cases MEDIUM. Beds 2/2. Saline 8/27 Kits 4/14. Short 19 saline, 10 kits.
+
+[SHORTFALL] NCC_Ward_04 -> HC-NCC-04
+AlertAhead HCM NCC-04 wk 21Jul: exp 7 cases MEDIUM. Beds 2/2. Saline 12/27 Kits 6/13. Short 15 saline, 7 kits.

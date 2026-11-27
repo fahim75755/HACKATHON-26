@@ -1,0 +1,16 @@
+AlertAhead SMS queue · Gazipur · 5 message(s), most urgent first
+
+[RED] GCC_Ward_01 -> HC-GCC-01
+AlertAhead HCM GCC-01 wk 21Jul: exp 11 cases HIGH. Beds 3/3. Saline 30/41 Kits 15/20. RED: request 11 saline, 5 kits.
+
+[RED] GCC_Ward_02 -> HC-GCC-02
+AlertAhead HCM GCC-02 wk 21Jul: exp 14 cases HIGH. Beds 4/4. Saline 27/45 Kits 13/22. RED: request 18 saline, 9 kits.
+
+[RED] GCC_Ward_03 -> HC-GCC-03
+AlertAhead HCM GCC-03 wk 21Jul: exp 14 cases HIGH. Beds 4/4. Saline 29/45 Kits 14/22. RED: request 16 saline, 8 kits.
+
+[RED] GCC_Ward_05 -> HC-GCC-05
+AlertAhead HCM GCC-05 wk 21Jul: exp 10 cases HIGH. Beds 3/3. Saline 23/35 Kits 11/17. RED: request 12 saline, 6 kits.
+
+[SHORTFALL] GCC_Ward_04 -> HC-GCC-04
+AlertAhead HCM GCC-04 wk 21Jul: exp 9 cases MEDIUM. Beds 3/3. Saline 11/34 Kits 6/17. Short 23 saline, 11 kits.

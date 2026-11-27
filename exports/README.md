@@ -12,4 +12,4 @@ Generated offline by `python make_exports.py` from the templates in `dengue/noti
 | `city_summary/` | Bed headroom, routing and alerts per city |
 | `escalation/` | Civil-surgeon escalation, only for cities with CODE BLACK or an exhausted bed pool |
 | `allocation.csv`, `routing.csv` | The numbers behind every notice |
-| `outbox/` | Alert routing: who gets which message (`outbox.csv`, priority + recipient + SMS text) and one file per recipient with a RED, CODE BLACK or escalation alert (`by_recipient/`) |
+| `outbox/` | Alert SMS queue: every ward that needs an SMS to its medical centre, plus civil-surgeon escalations, most urgent first (`queue.csv`), and one ready-to-send list per city for its health officer (`by_city/`) |

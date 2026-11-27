@@ -5,3 +5,6 @@ __pycache__/
 venv/
 .claude/
 .streamlit/secrets.toml
+# officer-portal database (accounts, phone numbers, SMS status): local only, never in the public repo
+data/*.db
+data/*.db-journal

@@ -1,0 +1,64 @@
+AlertAhead SMS queue · Dhaka North · 21 message(s), most urgent first
+
+[ESCALATION] Dhaka North -> CS-DHAKA-NORTH
+AlertAhead ESCALATION Dhaka North wk 21Jul: 1 without bed after routing. CODE BLACK DNCC-10. Saline short 256. Request surge beds.
+
+[CODE BLACK] DNCC_Ward_10 -> HC-DNCC-10
+AlertAhead HCM DNCC-10 wk 21Jul: exp 12 cases HIGH. Beds 4/3. Saline 30/41 Kits 15/20. CODE BLACK: no bed for 1, saline short 11.
+
+[RED] DNCC_Ward_01 -> HC-DNCC-01
+AlertAhead HCM DNCC-01 wk 21Jul: exp 11 cases HIGH. Beds 3/3. Saline 25/37 Kits 12/18. RED: request 12 saline, 6 kits.
+
+[RED] DNCC_Ward_02 -> HC-DNCC-02
+AlertAhead HCM DNCC-02 wk 21Jul: exp 10 cases HIGH. Beds 3/3. Saline 27/35 Kits 13/17. RED: request 8 saline, 4 kits.
+
+[RED] DNCC_Ward_05 -> HC-DNCC-05
+AlertAhead HCM DNCC-05 wk 21Jul: exp 9 cases HIGH. Beds 3/3. Saline 29/34 Kits 15/17. RED: request 5 saline, 2 kits.
+
+[RED] DNCC_Ward_07 -> HC-DNCC-07
+AlertAhead HCM DNCC-07 wk 21Jul: exp 10 cases HIGH. Beds 3/2 (1 to DNCC-11). Saline 23/33 Kits 11/16. RED: request 10 saline, 5 kits.
+
+[RED] DNCC_Ward_09 -> HC-DNCC-09
+AlertAhead HCM DNCC-09 wk 21Jul: exp 11 cases HIGH. Beds 3/3. Saline 29/40 Kits 14/20. RED: request 11 saline, 6 kits.
+
+[RED] DNCC_Ward_12 -> HC-DNCC-12
+AlertAhead HCM DNCC-12 wk 21Jul: exp 16 cases HIGH. Beds 5/4 (1 to DNCC-16). Saline 47/53 Kits 23/26. RED: request 6 saline, 3 kits.
+
+[RED] DNCC_Ward_15 -> HC-DNCC-15
+AlertAhead HCM DNCC-15 wk 21Jul: exp 10 cases HIGH. Beds 3/3. Saline 20/35 Kits 10/17. RED: request 15 saline, 7 kits.
+
+[RED] DNCC_Ward_18 -> HC-DNCC-18
+AlertAhead HCM DNCC-18 wk 21Jul: exp 13 cases HIGH. Beds 4/4. Saline 39/47 Kits 19/23. RED: request 8 saline, 4 kits.
+
+[RED] DNCC_Ward_19 -> HC-DNCC-19
+AlertAhead HCM DNCC-19 wk 21Jul: exp 12 cases HIGH. Beds 4/4. Saline 31/41 Kits 15/20. RED: request 10 saline, 5 kits.
+
+[SHORTFALL] DNCC_Ward_03 -> HC-DNCC-03
+AlertAhead HCM DNCC-03 wk 21Jul: exp 9 cases MEDIUM. Beds 3/3. Saline 9/32 Kits 5/16. Short 23 saline, 11 kits.
+
+[SHORTFALL] DNCC_Ward_04 -> HC-DNCC-04
+AlertAhead HCM DNCC-04 wk 21Jul: exp 5 cases MEDIUM. Beds 2/2. Saline 9/22 Kits 4/11. Short 13 saline, 7 kits.
+
+[SHORTFALL] DNCC_Ward_06 -> HC-DNCC-06
+AlertAhead HCM DNCC-06 wk 21Jul: exp 7 cases MEDIUM. Beds 2/2. Saline 7/24 Kits 4/12. Short 17 saline, 8 kits.
+
+[SHORTFALL] DNCC_Ward_08 -> HC-DNCC-08
+AlertAhead HCM DNCC-08 wk 21Jul: exp 7 cases MEDIUM. Beds 2/2. Saline 8/26 Kits 4/13. Short 18 saline, 9 kits.
+
+[SHORTFALL] DNCC_Ward_11 -> HC-DNCC-11
+AlertAhead HCM DNCC-11 wk 21Jul: exp 8 cases MEDIUM. Beds 2/3 (+1 in). Saline 11/29 Kits 5/14. Short 18 saline, 9 kits.
+
+[SHORTFALL] DNCC_Ward_13 -> HC-DNCC-13
+AlertAhead HCM DNCC-13 wk 21Jul: exp 5 cases MEDIUM. Beds 2/2. Saline 5/14 Kits 2/7. Short 9 saline, 5 kits.
+
+[SHORTFALL] DNCC_Ward_14 -> HC-DNCC-14
+AlertAhead HCM DNCC-14 wk 21Jul: exp 6 cases MEDIUM. Beds 2/2. Saline 8/22 Kits 4/11. Short 14 saline, 7 kits.
+
+[SHORTFALL] DNCC_Ward_16 -> HC-DNCC-16
+AlertAhead HCM DNCC-16 wk 21Jul: exp 8 cases MEDIUM. Beds 2/3 (+1 in). Saline 11/27 Kits 6/14. Short 16 saline, 8 kits.
+
+[SHORTFALL] DNCC_Ward_17 -> HC-DNCC-17
+AlertAhead HCM DNCC-17 wk 21Jul: exp 6 cases MEDIUM. Beds 2/2. Saline 10/26 Kits 5/13. Short 16 saline, 8 kits.
+
+[SHORTFALL] DNCC_Ward_20 -> HC-DNCC-20
+AlertAhead HCM DNCC-20 wk 21Jul: exp 6 cases MEDIUM. Beds 2/2. Saline 7/23 Kits 4/11. Short 16 saline, 7 kits.

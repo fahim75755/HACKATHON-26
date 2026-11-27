@@ -1,4 +1,0 @@
-To: HCM-DNCC-19
-
-[RED] DNCC_Ward_19
-AlertAhead HCM DNCC-19 wk 21Jul: exp 12 cases HIGH. Beds 4/4. Saline 31/41 Kits 15/20. RED: request 10 saline, 5 kits.

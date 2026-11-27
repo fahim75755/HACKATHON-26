@@ -1,17 +1,18 @@
-"""Alert routing + outbox: who receives which dispatch notice (a bonus on top of R4; fully offline).
+"""Alert SMS queue: which wards need an SMS to their medical centre (a bonus on top of R4; fully offline).
 
-Rules (one row per recipient and message):
-  * every ward      -> its ward commissioner (COMM-...) and health-centre manager (HCM-...)
-                       level = CODE BLACK / RED / SHORTFALL / ROUTINE from notify.flags()
+The queue (one item per alert, most urgent first):
+  * every ward with a shortfall  -> SMS to that ward's medical centre (HC-...),
+                                    level CODE BLACK / RED / SHORTFALL from notify.flags()
   * a city with a CODE BLACK ward or an exhausted bed pool
-                    -> the city's civil surgeon (CS-...) gets an ESCALATION,
-                       and the commissioner of every CODE BLACK ward gets a copy (cc)
-Priority: 1 = CODE BLACK / ESCALATION, 2 = RED, 3 = SHORTFALL, 4 = ROUTINE.
+                                 -> ESCALATION SMS to the city's civil surgeon (CS-...)
+Wards with no shortfall are not queued. Priority: 1 = CODE BLACK / ESCALATION, 2 = RED, 3 = SHORTFALL.
 
-Nothing is sent from here. The officer / commissioner copies the text or taps the `sms:` link, which
-opens the phone's own SMS app with the text filled in, so the app never needs a gateway, an API key or
-the internet. Message text comes from dengue/notify.py, so it always matches the Dispatch tab and exports.
-Pure functions, no clock: the same scenario gives the same outbox.
+Who works the queue: officers signed in to the portal (accounts in dengue/db.py). A ward officer sees their
+ward, a city health officer sees their whole city including escalations, an admin (control room) sees everything.
+The officer copies the SMS or taps the `sms:` link, which opens the phone's own SMS app with the
+centre's number and the text filled in, then marks it sent. The app itself sends nothing: no gateway,
+no API key, no internet. Texts come from dengue/notify.py (the health-centre version), so they always
+match the Dispatch tab and the exports. Pure functions, no clock: the same scenario gives the same queue.
 """
 from __future__ import annotations
 
@@ -22,30 +23,31 @@ import pandas as pd
 
 from dengue import notify
 
-PRIORITY = {"CODE BLACK": 1, "ESCALATION": 1, "RED": 2, "SHORTFALL": 3, "ROUTINE": 4}
-ICON = {"CODE BLACK": "⚫", "ESCALATION": "⚫", "RED": "🔴", "SHORTFALL": "🟠", "ROUTINE": "🟢"}
-ROLE_NAME = {"comm": ("Ward commissioner", "ওয়ার্ড কমিশনার"), "hcm": ("Health-centre manager", "স্বাস্থ্যকেন্দ্র ব্যবস্থাপক"),
-             "cs": ("Civil surgeon", "সিভিল সার্জন")}
-ROLE_ORDER = {"cs": 0, "comm": 1, "hcm": 2}
-OUTBOX_COLS = ["msg_id", "priority", "level", "recipient_id", "role", "ward_id", "city", "cc", "sms_en", "sms_bn", "whatsapp"]
+PRIORITY = {"CODE BLACK": 1, "ESCALATION": 1, "RED": 2, "SHORTFALL": 3}
+ICON = {"CODE BLACK": "⚫", "ESCALATION": "⚫", "RED": "🔴", "SHORTFALL": "🟠"}
+RECIPIENT_NAME = {"hc": ("Medical centre", "মেডিকেল সেন্টার"), "cs": ("Civil surgeon", "সিভিল সার্জন")}
+ROLE_NAME = {"admin": ("Control room (admin)", "কন্ট্রোল রুম (অ্যাডমিন)"), "city": ("City health officer", "শহর স্বাস্থ্য কর্মকর্তা"),
+             "ward": ("Ward officer", "ওয়ার্ড কর্মকর্তা")}
+QUEUE_COLS = ["msg_id", "priority", "level", "ward_id", "city", "to_id", "to_role", "sms_en", "sms_bn", "whatsapp"]
 
 
-def recipient_id(role: str, ward_or_city: str) -> str:
-    """COMM-DNCC-05, HCM-DNCC-05, CS-DHAKA-NORTH."""
-    if role == "cs":
-        return "CS-" + str(ward_or_city).upper().replace(" ", "-")
-    return f"{role.upper()}-{notify.short_code(ward_or_city)}"
+def city_slug(city: str) -> str:
+    return str(city).upper().replace(" ", "-")
 
 
-def recipients(wards: pd.DataFrame) -> pd.DataFrame:
-    """Everyone who can receive a notice for these wards (the access-code directory)."""
-    rows = []
-    for _, w in wards.sort_values("ward_id").iterrows():
-        for role in ("comm", "hcm"):
-            rows.append({"recipient_id": recipient_id(role, w["ward_id"]), "role": role, "ward_id": w["ward_id"], "city": w["city"]})
-    for city in sorted(wards["city"].unique()):
-        rows.append({"recipient_id": recipient_id("cs", city), "role": "cs", "ward_id": "", "city": city})
-    return pd.DataFrame(rows, columns=["recipient_id", "role", "ward_id", "city"])
+def medical_centre_id(ward_id: str) -> str:
+    return f"HC-{notify.short_code(ward_id)}"       # HC-DNCC-05
+
+
+def civil_surgeon_id(city: str) -> str:
+    return f"CS-{city_slug(city)}"                  # CS-DHAKA-NORTH
+
+
+def contacts_seed(wards: pd.DataFrame) -> list[tuple[str, str]]:
+    """Every SMS recipient as (contact_id, name): one medical centre per ward, one civil surgeon per city."""
+    rows = [(medical_centre_id(w), f"Medical centre · {w}") for w in sorted(wards["ward_id"].unique())]
+    rows += [(civil_surgeon_id(c), f"Civil surgeon · {c}") for c in sorted(wards["city"].unique())]
+    return rows
 
 
 def ward_level(w) -> str:
@@ -72,59 +74,64 @@ def escalation_sms(city: str, wards: pd.DataFrame, cities: pd.DataFrame, ctx: no
     return text[:notify.SMS_EN_MAX]
 
 
-def _msg_id(ctx: notify.NoticeContext, rid: str, level: str, where: str, cc: bool) -> str:
-    return hashlib.sha1(f"{ctx.scenario}|{rid}|{level}|{where}|{cc}".encode()).hexdigest()[:10]
+def _msg_id(ctx: notify.NoticeContext, to_id: str, level: str, where: str) -> str:
+    return hashlib.sha1(f"{ctx.scenario}|{to_id}|{level}|{where}".encode()).hexdigest()[:10]
 
 
-def build_outbox(wards: pd.DataFrame, cities: pd.DataFrame, transfers: pd.DataFrame | None,
-                 ctx: notify.NoticeContext) -> pd.DataFrame:
-    """Every message, sorted most urgent first."""
+def build_queue(wards: pd.DataFrame, cities: pd.DataFrame, transfers: pd.DataFrame | None,
+                ctx: notify.NoticeContext) -> pd.DataFrame:
+    """Every SMS that should go out for this scenario, most urgent first."""
     rows = []
     for _, w in wards.sort_values("ward_id").iterrows():
         level = ward_level(w)
-        for role in ("comm", "hcm"):
-            rid = recipient_id(role, w["ward_id"])
-            rows.append({"msg_id": _msg_id(ctx, rid, level, w["ward_id"], False), "priority": PRIORITY[level], "level": level,
-                         "recipient_id": rid, "role": role, "ward_id": w["ward_id"], "city": w["city"], "cc": False,
-                         "sms_en": notify.sms_en(w, ctx, transfers, role), "sms_bn": notify.sms_bn(w, ctx),
-                         "whatsapp": notify.whatsapp(w, ctx, transfers, role, "both")})
+        if level == "ROUTINE":
+            continue
+        to = medical_centre_id(w["ward_id"])
+        rows.append({"msg_id": _msg_id(ctx, to, level, w["ward_id"]), "priority": PRIORITY[level], "level": level,
+                     "ward_id": w["ward_id"], "city": w["city"], "to_id": to, "to_role": "hc",
+                     "sms_en": notify.sms_en(w, ctx, transfers, "hcm"), "sms_bn": notify.sms_bn(w, ctx),
+                     "whatsapp": notify.whatsapp(w, ctx, transfers, "hcm", "both")})
     for city in sorted(wards["city"].unique()):
         sms = escalation_sms(city, wards, cities, ctx)
         if sms is None:
             continue
-        long_text = notify.escalation(city, wards, cities, ctx, "both")
-        rid = recipient_id("cs", city)
-        rows.append({"msg_id": _msg_id(ctx, rid, "ESCALATION", city, False), "priority": 1, "level": "ESCALATION",
-                     "recipient_id": rid, "role": "cs", "ward_id": "", "city": city, "cc": False,
-                     "sms_en": sms, "sms_bn": "", "whatsapp": long_text})
-        for _, w in wards[wards["city"] == city].sort_values("ward_id").iterrows():
-            if notify.flags(w)["black"]:
-                crid = recipient_id("comm", w["ward_id"])
-                rows.append({"msg_id": _msg_id(ctx, crid, "ESCALATION", city, True), "priority": 1, "level": "ESCALATION",
-                             "recipient_id": crid, "role": "comm", "ward_id": w["ward_id"], "city": city, "cc": True,
-                             "sms_en": sms, "sms_bn": "", "whatsapp": long_text})
-    box = pd.DataFrame(rows, columns=OUTBOX_COLS)
-    if box.empty:
-        return box
-    box["_r"] = box["role"].map(ROLE_ORDER)
-    box = box.sort_values(["priority", "city", "ward_id", "_r", "cc"]).drop(columns="_r").reset_index(drop=True)
-    return box
+        to = civil_surgeon_id(city)
+        rows.append({"msg_id": _msg_id(ctx, to, "ESCALATION", city), "priority": 1, "level": "ESCALATION",
+                     "ward_id": "", "city": city, "to_id": to, "to_role": "cs",
+                     "sms_en": sms, "sms_bn": "", "whatsapp": notify.escalation(city, wards, cities, ctx, "both")})
+    q = pd.DataFrame(rows, columns=QUEUE_COLS)
+    if q.empty:
+        return q
+    q["_cs"] = (q["to_role"] != "cs").astype(int)          # within a city, the civil-surgeon escalation first
+    return q.sort_values(["priority", "city", "_cs", "ward_id"]).drop(columns="_cs").reset_index(drop=True)
+
+
+def visible(queue: pd.DataFrame, officer: dict | None) -> pd.DataFrame:
+    """The part of the queue an officer works: admin = all, city officer = their city, ward officer = their ward."""
+    role = (officer or {}).get("role")
+    if role == "admin":
+        return queue
+    if role == "city":
+        return queue[queue["city"] == officer.get("city")]
+    if role == "ward":
+        return queue[queue["ward_id"] == officer.get("ward_id")]
+    return queue.iloc[0:0]
 
 
 def sms_link(text: str, phone: str = "") -> str:
-    """`sms:` link: on a phone it opens the SMS app with the text filled in (works without mobile data)."""
+    """`sms:` link: on a phone it opens the SMS app with the number and text filled in (no mobile data needed)."""
     return f"sms:{phone}?body={urllib.parse.quote(text)}"
 
 
-def outbox_files(box: pd.DataFrame) -> dict[str, str]:
-    """outbox/outbox.csv (every message) + one text file per recipient who has an urgent message (priority <= 2)."""
-    files = {"outbox/outbox.csv": box.drop(columns=["whatsapp"]).to_csv(index=False, lineterminator="\n")}
-    urgent = box[box["priority"] <= 2]
-    for rid in sorted(urgent["recipient_id"].unique()):
-        mine = box[box["recipient_id"] == rid]
-        parts = [f"To: {rid}", ""]
+def queue_files(queue: pd.DataFrame) -> dict[str, str]:
+    """outbox/queue.csv (every queued SMS) + one ready-to-send list per city for its health officer."""
+    files = {"outbox/queue.csv": queue.drop(columns=["whatsapp"]).to_csv(index=False, lineterminator="\n")}
+    if queue.empty:
+        return files
+    for city in sorted(queue["city"].unique()):
+        mine = queue[queue["city"] == city]
+        parts = [f"AlertAhead SMS queue · {city} · {len(mine)} message(s), most urgent first", ""]
         for _, m in mine.iterrows():
-            head = f"[{m['level']}{' · copy' if m['cc'] else ''}] {m['ward_id'] or m['city']}"
-            parts += [head, m["sms_en"], ""]
-        files[f"outbox/by_recipient/{rid}.txt"] = "\n".join(parts).rstrip() + "\n"
+            parts += [f"[{m['level']}] {m['ward_id'] or city} -> {m['to_id']}", m["sms_en"], ""]
+        files[f"outbox/by_city/{city.replace(' ', '_')}.txt"] = "\n".join(parts).rstrip() + "\n"
     return files

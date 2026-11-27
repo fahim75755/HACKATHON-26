@@ -397,7 +397,7 @@ def render_command_center(issue_week, city_choice: str, is_bn: bool, data_end) -
     _kpis(wards, cities, crews, is_bn)
     tabs = st.tabs([_t(is_bn, "① Allocation", "① বরাদ্দ"), _t(is_bn, "② Surge & routing", "② শয্যা চাপ ও স্থানান্তর"),
                     _t(is_bn, "③ Vector-control simulator", "③ মশক নিধন সিমুলেটর"), _t(is_bn, "④ Dispatch notices", "④ নির্দেশনা বার্তা"),
-                    _t(is_bn, "⑤ Offline & system", "⑤ অফলাইন ও সিস্টেম"), _t(is_bn, "⑥ Commissioner outbox", "⑥ কমিশনার আউটবক্স")])
+                    _t(is_bn, "⑤ Offline & system", "⑤ অফলাইন ও সিস্টেম"), _t(is_bn, "⑥ Officer portal (login · SMS queue · admin)", "⑥ কর্মকর্তা পোর্টাল (লগইন · এসএমএস কিউ · অ্যাডমিন)")])
     with tabs[0]:
         _allocation(wards, city, is_bn, issue, stock, buffer, crews, eff, reserve, overrides, offline)
     with tabs[1]:

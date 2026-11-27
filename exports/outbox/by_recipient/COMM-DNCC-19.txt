@@ -1,4 +1,0 @@
-To: COMM-DNCC-19
-
-[RED] DNCC_Ward_19
-AlertAhead DNCC-19 wk 21Jul: exp 12 cases HIGH. Saline 31/41 Kits 15/20. Beds 4/4. Crews 0. RED: request 10 saline, 5 kits.

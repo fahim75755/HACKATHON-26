@@ -1,4 +1,0 @@
-To: HCM-NCC-01
-
-[RED] NCC_Ward_01
-AlertAhead HCM NCC-01 wk 21Jul: exp 10 cases HIGH. Beds 3/3. Saline 36/38 Kits 18/19. RED: request 2 saline, 1 kit.

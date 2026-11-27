@@ -1,0 +1,31 @@
+AlertAhead SMS queue · Chattogram · 10 message(s), most urgent first
+
+[RED] CCC_Ward_01 -> HC-CCC-01
+AlertAhead HCM CCC-01 wk 21Jul: exp 12 cases HIGH. Beds 4/4. Saline 43/45 Kits 21/22. RED: request 2 saline, 1 kit.
+
+[RED] CCC_Ward_03 -> HC-CCC-03
+AlertAhead HCM CCC-03 wk 21Jul: exp 13 cases HIGH. Beds 4/5. Saline 46/48 Kits 23/24. RED: request 2 saline, 1 kit.
+
+[RED] CCC_Ward_07 -> HC-CCC-07
+AlertAhead HCM CCC-07 wk 21Jul: exp 12 cases HIGH. Beds 3/4. Saline 30/39 Kits 15/19. RED: request 9 saline, 4 kits.
+
+[SHORTFALL] CCC_Ward_02 -> HC-CCC-02
+AlertAhead HCM CCC-02 wk 21Jul: exp 7 cases MEDIUM. Beds 2/2. Saline 8/25 Kits 4/12. Short 17 saline, 8 kits.
+
+[SHORTFALL] CCC_Ward_04 -> HC-CCC-04
+AlertAhead HCM CCC-04 wk 21Jul: exp 8 cases MEDIUM. Beds 2/3. Saline 13/31 Kits 7/16. Short 18 saline, 9 kits.
+
+[SHORTFALL] CCC_Ward_05 -> HC-CCC-05
+AlertAhead HCM CCC-05 wk 21Jul: exp 6 cases MEDIUM. Beds 2/2. Saline 8/23 Kits 4/12. Short 15 saline, 8 kits.
+
+[SHORTFALL] CCC_Ward_06 -> HC-CCC-06
+AlertAhead HCM CCC-06 wk 21Jul: exp 8 cases MEDIUM. Beds 2/3. Saline 11/29 Kits 5/14. Short 18 saline, 9 kits.
+
+[SHORTFALL] CCC_Ward_08 -> HC-CCC-08
+AlertAhead HCM CCC-08 wk 21Jul: exp 8 cases MEDIUM. Beds 2/3. Saline 11/29 Kits 5/14. Short 18 saline, 9 kits.
+
+[SHORTFALL] CCC_Ward_09 -> HC-CCC-09
+AlertAhead HCM CCC-09 wk 21Jul: exp 6 cases MEDIUM. Beds 2/2. Saline 5/14 Kits 2/7. Short 9 saline, 5 kits.
+
+[SHORTFALL] CCC_Ward_10 -> HC-CCC-10
+AlertAhead HCM CCC-10 wk 21Jul: exp 7 cases MEDIUM. Beds 2/2. Saline 10/25 Kits 5/12. Short 15 saline, 7 kits.

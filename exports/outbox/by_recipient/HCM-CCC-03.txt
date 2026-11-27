@@ -1,4 +1,0 @@
-To: HCM-CCC-03
-
-[RED] CCC_Ward_03
-AlertAhead HCM CCC-03 wk 21Jul: exp 13 cases HIGH. Beds 4/5. Saline 46/48 Kits 23/24. RED: request 2 saline, 1 kit.

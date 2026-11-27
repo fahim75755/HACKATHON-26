@@ -1,95 +1,53 @@
-"""Access codes for the commissioner outbox (a bonus on top of R4; fully offline).
+"""Login helpers for the officer portal: salted password hashes and a brute-force brake. Pure Python, offline.
 
-A code is *derived*, never stored:
-
-    code = HMAC-SHA256(secret, f"{recipient_id}:{version}")  -> 10 letters, shown as XXXXX-XXXXX
-
-* `ACCESS_SECRET` signs commissioner / health-centre / civil-surgeon codes, `ADMIN_SECRET` signs the
-  admin code, so leaking one does not leak the other.
-* Both live in `.streamlit/secrets.toml` (git-ignored) locally and in Streamlit Cloud -> App settings ->
-  Secrets online. Nothing secret is in the repo, and nothing has to be written to disk, so codes
-  survive Streamlit Cloud restarts.
-* Revoke one code: raise its number under `[code_versions]` in the secrets (e.g. `COMM-DNCC-05 = 2`).
-  Revoke all codes: change `ACCESS_SECRET`.
-* No secrets configured (tests, a fresh laptop, judging): fixed demo secrets are used and the UI says
-  "Demo mode" and prints the demo codes, so nobody is ever locked out of a feature.
-
-Pure Python (hmac, hashlib): no network, deterministic.
+Passwords are never stored: each one is kept as
+    pbkdf2_sha256$<iterations>$<salt hex>$<hash hex>
+(PBKDF2-HMAC-SHA256, 16-byte random salt), and checked with hmac.compare_digest.
 """
 from __future__ import annotations
 
 import hashlib
 import hmac
-import os
+import secrets
 import threading
 import time
-from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, field
+from collections.abc import Callable
 
-ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"   # no 0/O, 1/I/L: easy to read out over the phone
-CODE_LEN = 10
-ADMIN_ID = "ADMIN"
-DEMO_ACCESS_SECRET = "alertahead-demo-access-secret"
-DEMO_ADMIN_SECRET = "alertahead-demo-admin-secret"
+ITERATIONS = 200_000
+MIN_PASSWORD = 8
+PASSWORD_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
 
 
-@dataclass(frozen=True)
-class Keys:
-    access: bytes
-    admin: bytes
-    versions: dict = field(default_factory=dict)   # recipient_id -> int (missing = 1)
-    demo: bool = True
+def hash_password(password: str, iterations: int = ITERATIONS) -> str:
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+    return f"pbkdf2_sha256${iterations}${salt.hex()}${digest.hex()}"
 
 
-def load_keys(source: Mapping | None = None, env: Mapping | None = None) -> Keys:
-    """Read the secrets from `source` (e.g. st.secrets) or the environment; fall back to demo keys."""
-    src = dict(source or {})
-    env = os.environ if env is None else env
-    access = src.get("ACCESS_SECRET") or env.get("ALERTAHEAD_ACCESS_SECRET")
-    admin = src.get("ADMIN_SECRET") or env.get("ALERTAHEAD_ADMIN_SECRET")
-    versions = {str(k): int(v) for k, v in dict(src.get("code_versions") or {}).items()}
-    return Keys(access=str(access or DEMO_ACCESS_SECRET).encode(), admin=str(admin or DEMO_ADMIN_SECRET).encode(),
-                versions=versions, demo=not (access and admin))
+def verify_password(password: str, stored: str) -> bool:
+    try:
+        algo, iters, salt_hex, hash_hex = stored.split("$")
+        if algo != "pbkdf2_sha256":
+            return False
+        digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), int(iters))
+        return hmac.compare_digest(digest.hex(), hash_hex)
+    except (ValueError, AttributeError):
+        return False
 
 
-def make_code(secret: bytes, recipient_id: str, version: int = 1) -> str:
-    """The code for one recipient: 10 characters from ALPHABET (~8 x 10^14 possibilities)."""
-    mac = hmac.new(secret, f"{recipient_id}:{int(version)}".encode(), hashlib.sha256).digest()
-    n, out = int.from_bytes(mac[:8], "big"), []
-    for _ in range(CODE_LEN):
-        n, r = divmod(n, len(ALPHABET))
-        out.append(ALPHABET[r])
-    s = "".join(out)
-    return f"{s[:5]}-{s[5:]}"
+# A fixed hash checked when the username does not exist, so a wrong user name takes as long as a wrong password.
+DUMMY_HASH = hash_password("not-a-real-account")
 
 
-def normalise(code: str) -> str:
-    """Accept lower case, spaces and a missing dash: ' 7kq4m 9txrb ' -> '7KQ4M-9TXRB'."""
-    s = "".join(ch for ch in str(code).upper() if ch.isalnum())
-    return f"{s[:5]}-{s[5:]}" if len(s) == CODE_LEN else s
-
-
-def code_for(keys: Keys, recipient_id: str) -> str:
-    secret = keys.admin if recipient_id == ADMIN_ID else keys.access
-    return make_code(secret, recipient_id, keys.versions.get(recipient_id, 1))
-
-
-def who_is(code: str, keys: Keys, recipient_ids: Iterable[str]) -> str | None:
-    """Return the recipient this code belongs to, or None. Compares every candidate in constant time."""
-    c = normalise(code)
-    if len(c) != CODE_LEN + 1:
-        return None
-    found = None
-    for rid in [ADMIN_ID, *sorted(set(recipient_ids))]:
-        if hmac.compare_digest(code_for(keys, rid), c):
-            found = rid
-    return found
+def new_password(length: int = 12) -> str:
+    """A random password that is easy to read out (no 0/O, 1/l/I)."""
+    return "".join(secrets.choice(PASSWORD_ALPHABET) for _ in range(length))
 
 
 class AttemptLimiter:
     """Brute-force brake shared by every visitor of one server process.
 
-    `max_fails` wrong codes from one client key (the visitor's IP when Streamlit knows it, else one
+    `max_fails` wrong logins from one client key (the visitor's IP when Streamlit knows it, else one
     global key) inside `window_s` seconds lock that key for `lock_s` seconds.
     """
 

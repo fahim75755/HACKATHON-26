@@ -53,7 +53,7 @@ def main() -> None:
         shutil.copy2(FONT, OUT / "fonts" / FONT.name)
         font_url = "../fonts/" + FONT.name
     files = notify.export_files(wards, cities, transfers, ctx, font_rel_url=font_url)
-    files.update(outbox.outbox_files(outbox.build_outbox(wards, cities, transfers, ctx)))
+    files.update(outbox.queue_files(outbox.build_queue(wards, cities, transfers, ctx)))
     files["README.md"] = (
         "# AlertAhead dispatch exports\n\n"
         f"Scenario `{sid}` · issue week {args.date} · +{args.horizon} weeks (target {ctx.target:%Y-%m-%d}) · "
@@ -66,8 +66,8 @@ def main() -> None:
         "| `city_summary/` | Bed headroom, routing and alerts per city |\n"
         "| `escalation/` | Civil-surgeon escalation, only for cities with CODE BLACK or an exhausted bed pool |\n"
         "| `allocation.csv`, `routing.csv` | The numbers behind every notice |\n"
-        "| `outbox/` | Alert routing: who gets which message (`outbox.csv`, priority + recipient + SMS text) and one file per "
-        "recipient with a RED, CODE BLACK or escalation alert (`by_recipient/`) |\n"
+        "| `outbox/` | Alert SMS queue: every ward that needs an SMS to its medical centre, plus civil-surgeon escalations, "
+        "most urgent first (`queue.csv`), and one ready-to-send list per city for its health officer (`by_city/`) |\n"
     )
     for rel, text in files.items():
         path = OUT / rel
