@@ -32,7 +32,7 @@ The dashboard opens at http://localhost:8501.
 
 ```bash
 python train.py                         # ~20 s on a laptop CPU; rebuilds models/ and data/processed/
-python -m unittest discover -s tests -v # 70 tests: Phase 1 (lags, leakage, split, baselines, what-if, dashboard) + Phase 2 (allocation, routing, simulator, notices, offline)
+python -m unittest discover -s tests -v # 89 tests: Phase 1 (lags, leakage, split, baselines, what-if, dashboard) + Phase 2 (allocation, routing, simulator, notices, outbox, offline)
 ```
 
 ## Using the dashboard
@@ -124,6 +124,7 @@ across all 60 wards. Everything runs locally (no internet, no LLM).
 | **R3 Vector-control simulator** | Crews cut breeding-water features; the same h2/h3/h4 LightGBM models re-run → cases, beds and saline prevented at +2/+3/+4 weeks, ROI (cases prevented per crew) ranking; crews auto-assigned by ROI × density or placed by the officer on selected wards | `dengue/simulator.py` |
 | **R4 Dispatch notices** | SMS (English 1 × GSM-7 ≤ 160, Bangla ≤ 3 parts), WhatsApp, printable brief (Bangla font embedded), city summary, civil-surgeon escalation, ZIP of everything | `dengue/notify.py`, `make_exports.py`, [`exports/`](exports/) |
 | **R5 Offline** | Sidebar **Offline mode (kill-switch)** or `ALERTAHEAD_OFFLINE=1`: weather uses the offline cache, maps drop tiles; forecast ladder parquet → live LightGBM → same week last year | `dengue/fallback.py`, `tests/test_offline.py` |
+| **⑥ Commissioner outbox** (extra) | Alert routing: ⚫ CODE BLACK / city pool exhausted → civil surgeon (+ copy to the ward commissioner), 🔴 red alert and every routine notice → ward commissioner and health-centre manager, most urgent first. Each officer signs in with an **access code** and sees only their own messages; they copy the SMS or tap **Open in SMS app** (the phone's own SMS app, text pre-filled) and mark it sent / acknowledged. The app sends nothing itself, so it works offline | `dengue/outbox.py`, `dengue/access.py`, `dengue/ui_outbox.py`, [`exports/outbox/`](exports/outbox/) |
 
 * **Exact supply math:** the dataset's resource columns are a fixed rate × same-week cases. Fitted on 2016–2023
   (saline 2.384, kits 1.158, beds 0.2955 per case), the rates reproduce 2025 exactly (3120/3120, 3119/3120, 3120/3120 rows).
@@ -131,12 +132,18 @@ across all 60 wards. Everything runs locally (no internet, no LLM).
   transfers, Dhaka North's bed pool exhausted (1 CODE BLACK ward); High wards get 79 % of their saline vs 35 % for
   Medium, and 8 crews prevent ≈ 163 cases over +2–4 weeks (crew efficacy 30 % is an explicit assumption).
 * **Exports:** `python make_exports.py` rewrites [`exports/`](exports/) offline (byte-identical on re-run) and prints sample briefs to PDF.
+* **Access codes (outbox tab):** with no secrets set the app runs in **demo mode** and prints demo codes on the sign-in
+  screen (plus a "Sign in as demo admin" button), so nobody is locked out. For private codes add to
+  `.streamlit/secrets.toml` (git-ignored) or Streamlit Cloud → App settings → Secrets:
+  `ACCESS_SECRET = "<random>"`, `ADMIN_SECRET = "<random>"` (e.g. `python -c "import secrets; print(secrets.token_hex(32))"`).
+  The admin reads each officer's code from the outbox tab. Revoke one code by raising its number under
+  `[code_versions]` (e.g. `COMM-DNCC-05 = 2`); revoke all by changing `ACCESS_SECRET`.
 * **Model check (accuracy first):** 12 models compared (LightGBM variants, XGBoost, CatBoost, HistGradientBoosting,
   random forest, extra trees, Poisson GLM, ensembles), chosen on 2024 only and reported on 2025: none beat the
   Phase-1 LightGBM by more than 2 % MAE, so the models are unchanged (details in ARCHITECTURE.md).
 
 ```bash
-python -m unittest discover -s tests -v   # 70 tests incl. allocation, routing, simulator, notices, offline kill-switch
+python -m unittest discover -s tests -v   # 89 tests incl. allocation, routing, simulator, notices, outbox + access codes, offline kill-switch
 python make_exports.py                    # regenerate exports/ + sample PDFs (needs no internet)
 ```
 

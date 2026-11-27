@@ -16,7 +16,7 @@ import pandas as pd
 
 os.environ.setdefault("ALERTAHEAD_OFFLINE", "1")   # exports never touch the network
 
-from dengue import notify  # noqa: E402
+from dengue import notify, outbox  # noqa: E402
 from dengue.ui_command import adapt_result, get_engine, scenario_id  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent
@@ -53,6 +53,7 @@ def main() -> None:
         shutil.copy2(FONT, OUT / "fonts" / FONT.name)
         font_url = "../fonts/" + FONT.name
     files = notify.export_files(wards, cities, transfers, ctx, font_rel_url=font_url)
+    files.update(outbox.outbox_files(outbox.build_outbox(wards, cities, transfers, ctx)))
     files["README.md"] = (
         "# AlertAhead dispatch exports\n\n"
         f"Scenario `{sid}` · issue week {args.date} · +{args.horizon} weeks (target {ctx.target:%Y-%m-%d}) · "
@@ -65,6 +66,8 @@ def main() -> None:
         "| `city_summary/` | Bed headroom, routing and alerts per city |\n"
         "| `escalation/` | Civil-surgeon escalation, only for cities with CODE BLACK or an exhausted bed pool |\n"
         "| `allocation.csv`, `routing.csv` | The numbers behind every notice |\n"
+        "| `outbox/` | Alert routing: who gets which message (`outbox.csv`, priority + recipient + SMS text) and one file per "
+        "recipient with a RED, CODE BLACK or escalation alert (`by_recipient/`) |\n"
     )
     for rel, text in files.items():
         path = OUT / rel

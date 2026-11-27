@@ -1,0 +1,7 @@
+To: COMM-DNCC-10
+
+[CODE BLACK] DNCC_Ward_10
+AlertAhead DNCC-10 wk 21Jul: exp 12 cases HIGH. Saline 30/41 Kits 15/20. Beds 4/3. Crews 0. CODE BLACK: no bed for 1, saline short 11.
+
+[ESCALATION · copy] DNCC_Ward_10
+AlertAhead ESCALATION Dhaka North wk 21Jul: 1 without bed after routing. CODE BLACK DNCC-10. Saline short 256. Request surge beds.

@@ -138,6 +138,9 @@ flowchart LR
     R2 --> N[notify.py<br/>SMS / WhatsApp / brief / escalation]
     N --> U
     N --> E[make_exports.py -> exports/]
+    N --> O[outbox.py + access.py<br/>who gets which notice · access codes]
+    O --> U
+    O --> E
 ```
 
 ### Data facts the design rests on
@@ -186,6 +189,27 @@ allocated vs required supplies, the alert level and the assigned crews. English 
 (<= 160 characters), Bangla SMS <= 3 Unicode parts; WhatsApp is bilingual; the printable brief embeds a 45 KB
 Noto Sans Bengali subset (OFL) so Bangla renders on any PC; no clock in any file -> byte-identical re-runs.
 
+### Commissioner outbox (extra on R4: `dengue/outbox.py`, `dengue/access.py`, `dengue/ui_outbox.py`)
+* **Alert routing** (`outbox.build_outbox`): every ward's notice goes to its ward commissioner (`COMM-...`) and
+  health-centre manager (`HCM-...`) at the ward's level (CODE BLACK 1 > RED 2 > SHORTFALL 3 > ROUTINE 4). A city with a
+  CODE BLACK ward or an exhausted bed pool sends an ESCALATION to its civil surgeon (`CS-...`), copied to the
+  commissioner of each CODE BLACK ward. Texts are the same `notify.py` templates (English SMS <= 160 GSM-7), so the
+  outbox, the Dispatch tab and `exports/outbox/` always agree; same scenario -> same outbox.
+* **Nothing is sent by the app.** The officer copies the SMS or taps an `sms:` link that opens the phone's own SMS
+  app with the text filled in, then marks it sent / acknowledged (shown in an in-memory audit log). No gateway,
+  no API key, no network: the kill-switch cannot break it. A real SMS gateway would be an optional add-on, never core.
+* **Access codes** are derived, not stored: `HMAC-SHA256(secret, "recipient:version")` -> 10 characters
+  (`XXXXX-XXXXX`, about 8 x 10^14 values). `ACCESS_SECRET` signs officer codes, `ADMIN_SECRET` the admin code; both
+  live in Streamlit secrets (git-ignored locally), so nothing secret is in the public repo and nothing has to be
+  written to Streamlit Cloud's temporary disk. Revoke one code by raising its `[code_versions]` number, all codes by
+  changing `ACCESS_SECRET`. Codes are compared with `hmac.compare_digest`; 5 wrong codes within 5 minutes lock that
+  client (visitor IP when Streamlit provides it) for 5 minutes, and each wrong code waits 1 s.
+* **Never blocks judging:** R1-R5 and the Dispatch tab need no code. Without secrets the outbox runs in demo mode and
+  shows demo codes and a "Sign in as demo admin" button.
+* **Limits:** a shared code gives full access to that officer's messages; there is no account recovery, and the
+  sent / acknowledged status and audit log live in server memory (a restart clears them). Real deployment would add
+  proper accounts and a persistent store.
+
 ### R5 - offline resilience
 | Task | 1st | If unavailable | Last resort |
 |---|---|---|---|
@@ -213,6 +237,7 @@ Also tried: XGBoost, HistGradientBoosting, random forest, extra trees, Poisson G
 models stay - they also power the P90 range, the drivers and the simulator.
 
 ### Tests
-70 automated tests: Phase 1 (31), contract and same-number online vs offline, allocation invariants, MILP routing,
+89 automated tests: Phase 1 (31), contract and same-number online vs offline, allocation invariants, MILP routing,
+outbox routing and access codes (round trip, revoke, rotate, brute-force brake, demo sign-in),
 simulator (0 crews = 0, monotone, efficacy), notices (SMS limits, four required items, escalation rule,
 determinism), Command Center UI smoke (AppTest), offline kill-switch and fallback ladder.

@@ -22,7 +22,7 @@ class CommandCenterUITests(unittest.TestCase):
     def test_renders_all_sub_tabs_without_errors(self):
         at = AppTest.from_function(_command_center_page, default_timeout=60).run()
         self.assertFalse(at.exception, at.exception)
-        self.assertEqual(len(at.tabs), 5)
+        self.assertEqual(len(at.tabs), 6)
         self.assertGreaterEqual(len(at.metric), 6)
 
     def test_bangla_and_offline(self):

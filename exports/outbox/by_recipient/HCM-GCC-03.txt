@@ -1,0 +1,4 @@
+To: HCM-GCC-03
+
+[RED] GCC_Ward_03
+AlertAhead HCM GCC-03 wk 21Jul: exp 14 cases HIGH. Beds 4/4. Saline 29/45 Kits 14/22. RED: request 16 saline, 8 kits.

@@ -1,0 +1,4 @@
+To: HCM-DSCC-20
+
+[RED] DSCC_Ward_20
+AlertAhead HCM DSCC-20 wk 21Jul: exp 9 cases HIGH. Beds 3/3. Saline 23/34 Kits 12/17. RED: request 11 saline, 5 kits.

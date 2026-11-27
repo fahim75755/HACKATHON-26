@@ -1,0 +1,4 @@
+To: COMM-DSCC-19
+
+[RED] DSCC_Ward_19
+AlertAhead DSCC-19 wk 21Jul: exp 13 cases HIGH. Saline 36/43 Kits 18/21. Beds 4/4. Crews 0. RED: request 7 saline, 3 kits.

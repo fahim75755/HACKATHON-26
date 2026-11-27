@@ -26,6 +26,7 @@ from dengue import notify
 from dengue.config import FEATURES_PATH, PREDICTIONS_PATH, TRAIN_END
 from dengue.ops import CITY_CENTERS, WARD_COORDS
 from dengue.tiers import TIER_META, TIERS, assign_risk_tier
+from dengue.ui_outbox import render_outbox
 
 # ------------------------------------------------------------------ the contract the UI reads (columns may be added, never renamed)
 WARD_COLS = ["ward_id", "city", "tier", "pred", "saline_req", "saline_alloc", "kits_req", "kits_alloc",
@@ -322,7 +323,7 @@ def render_command_center(issue_week, city_choice: str, is_bn: bool, data_end) -
     _kpis(wards, cities, crews, is_bn)
     tabs = st.tabs([_t(is_bn, "① Allocation", "① বরাদ্দ"), _t(is_bn, "② Surge & routing", "② শয্যা চাপ ও স্থানান্তর"),
                     _t(is_bn, "③ Vector-control simulator", "③ মশক নিধন সিমুলেটর"), _t(is_bn, "④ Dispatch notices", "④ নির্দেশনা বার্তা"),
-                    _t(is_bn, "⑤ Offline & system", "⑤ অফলাইন ও সিস্টেম")])
+                    _t(is_bn, "⑤ Offline & system", "⑤ অফলাইন ও সিস্টেম"), _t(is_bn, "⑥ Commissioner outbox", "⑥ কমিশনার আউটবক্স")])
     with tabs[0]:
         _allocation(wards, city, is_bn, issue, stock, buffer, crews, eff, reserve, overrides, offline)
     with tabs[1]:
@@ -333,6 +334,8 @@ def render_command_center(issue_week, city_choice: str, is_bn: bool, data_end) -
         _dispatch(wards, transfers, cities, ctx, is_bn)
     with tabs[4]:
         _system(wards, transfers, cities, ctx, source, kind, offline, is_bn)
+    with tabs[5]:
+        render_outbox(wards, transfers, cities, ctx, is_bn)
 
 
 # ------------------------------------------------------------------ KPI strip

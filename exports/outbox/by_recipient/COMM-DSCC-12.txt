@@ -1,0 +1,4 @@
+To: COMM-DSCC-12
+
+[RED] DSCC_Ward_12
+AlertAhead DSCC-12 wk 21Jul: exp 11 cases HIGH. Saline 30/37 Kits 15/18. Beds 3/4. Crews 0. RED: request 7 saline, 3 kits.
