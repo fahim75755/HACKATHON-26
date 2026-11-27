@@ -64,6 +64,87 @@ def _merge_ward_traits(week_df: pd.DataFrame, features: pd.DataFrame) -> pd.Data
     return week_df.merge(traits, on="ward_id", how="left")
 
 
+_BD_LAND_POLY = [[
+    [88.40, 26.63], [89.10, 26.35], [89.83, 25.95], [89.88, 25.25],
+    [91.20, 25.18], [92.18, 25.15], [92.48, 24.85], [92.20, 24.45],
+    [91.85, 24.12], [91.32, 24.08], [91.22, 23.80], [91.45, 23.15],
+    [91.65, 23.02], [92.15, 23.70], [92.45, 22.90], [92.62, 21.85],
+    [92.32, 20.85], [92.15, 21.15], [91.97, 21.43], [91.85, 22.12],
+    [91.78, 22.24], [91.74, 22.36], [91.62, 22.62], [91.45, 22.78],
+    [91.05, 22.65], [90.65, 22.20], [90.20, 21.85], [89.10, 21.65],
+    [88.95, 22.65], [88.62, 23.65], [88.10, 24.65], [88.95, 25.25],
+    [88.22, 25.95], [88.40, 26.63],
+]]
+
+_BD_RIVERS = [
+    [[89.75, 25.85], [89.72, 24.80], [89.78, 23.80], [90.25, 23.45], [90.62, 23.22], [90.75, 22.45]],
+    [[88.20, 24.55], [88.90, 24.15], [89.78, 23.80]],
+    [[91.60, 24.90], [91.00, 24.20], [90.70, 23.60], [90.62, 23.22]],
+    [[90.32, 23.80], [90.38, 23.71], [90.49, 23.62]],
+    [[92.15, 22.50], [91.90, 22.35], [91.81, 22.28], [91.78, 22.23]],
+]
+
+
+def _offline_bd_layers(center_lat: float, center_lon: float, zoomed_in: bool) -> list[dict]:
+    """100% local GeoJSON base map for offline mode (zero network calls)."""
+    grid_lines: list[list[list[float]]] = []
+    if zoomed_in:
+        step = 0.05
+        lat0 = round(center_lat / step) * step
+        lon0 = round(center_lon / step) * step
+        for i in range(-8, 9):
+            lat = lat0 + i * step
+            lon = lon0 + i * step
+            grid_lines.append([[lon0 - 0.5, lat], [lon0 + 0.5, lat]])
+            grid_lines.append([[lon, lat0 - 0.5], [lon, lat0 + 0.5]])
+    else:
+        for lon in range(87, 95):
+            grid_lines.append([[float(lon), 19.5], [float(lon), 27.5]])
+        for lat in range(20, 28):
+            grid_lines.append([[86.5, float(lat)], [94.5, float(lat)]])
+
+    return [
+        {
+            "below": "traces",
+            "sourcetype": "geojson",
+            "source": {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[84.0, 18.0], [96.0, 18.0], [96.0, 29.0], [84.0, 29.0], [84.0, 18.0]]]}},
+            "type": "fill",
+            "color": "#DCECF7",
+        },
+        {
+            "below": "traces",
+            "sourcetype": "geojson",
+            "source": {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": _BD_LAND_POLY}},
+            "type": "fill",
+            "color": "#EEF5E8",
+        },
+        {
+            "below": "traces",
+            "sourcetype": "geojson",
+            "source": {"type": "Feature", "geometry": {"type": "MultiLineString", "coordinates": grid_lines}},
+            "type": "line",
+            "color": "#D4E3D8",
+            "line": {"width": 0.8},
+        },
+        {
+            "below": "traces",
+            "sourcetype": "geojson",
+            "source": {"type": "Feature", "geometry": {"type": "MultiLineString", "coordinates": _BD_RIVERS}},
+            "type": "line",
+            "color": "#AED3EB",
+            "line": {"width": 1.6},
+        },
+        {
+            "below": "traces",
+            "sourcetype": "geojson",
+            "source": {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": _BD_LAND_POLY}},
+            "type": "line",
+            "color": "#6B8E78",
+            "line": {"width": 1.8},
+        },
+    ]
+
+
 def _build_ward_map(
     df: pd.DataFrame,
     pred_col: str,
@@ -137,7 +218,7 @@ def _build_ward_map(
 
     if _offline_mode():
         # Tile-free fallback: markers on a blank background, no tile server is contacted.
-        map_cfg = dict(style="white-bg", center=dict(lat=center_lat, lon=center_lon), zoom=zoom)
+        map_cfg = dict(style="white-bg", layers=_offline_bd_layers(center_lat, center_lon, zoomed_in=(cities <= 2)), center=dict(lat=center_lat, lon=center_lon), zoom=zoom)
     elif map_style == "satellite":
         map_cfg = dict(
             style="white-bg",
