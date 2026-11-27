@@ -32,7 +32,7 @@ The dashboard opens at http://localhost:8501.
 
 ```bash
 python train.py                         # ~20 s on a laptop CPU; rebuilds models/ and data/processed/
-python -m unittest discover -s tests -v # 94 tests: Phase 1 (lags, leakage, split, baselines, what-if, dashboard) + Phase 2 (allocation, routing, simulator, notices, officer portal, offline)
+python -m unittest discover -s tests -v # 95 tests: Phase 1 (lags, leakage, split, baselines, what-if, dashboard) + Phase 2 (allocation, routing, simulator, notices, officer portal, offline)
 ```
 
 ## Using the dashboard
@@ -114,7 +114,8 @@ ARCHITECTURE.md        Data flow, validation split, model choice, cost controls
 
 ## Phase 2 (onsite): 🚑 Command Center
 
-The last tab turns the forecasts into an operations plan for ward commissioners and health-centre managers
+Open it from the sidebar: **View → 🚑 Command Center**, right below "Forecast from week of" (it uses the same city
+and week). It turns the forecasts into an operations plan for ward commissioners and health-centre managers
 across all 60 wards. Everything runs locally (no internet, no LLM).
 
 | Requirement | In the app | Code |
@@ -150,7 +151,7 @@ across all 60 wards. Everything runs locally (no internet, no LLM).
   Phase-1 LightGBM by more than 2 % MAE, so the models are unchanged (details in ARCHITECTURE.md).
 
 ```bash
-python -m unittest discover -s tests -v   # 94 tests incl. allocation, routing, simulator, notices, officer portal (login, SMS queue, admin), offline kill-switch
+python -m unittest discover -s tests -v   # 95 tests incl. allocation, routing, simulator, notices, officer portal (login, SMS queue, admin), offline kill-switch
 python make_exports.py                    # regenerate exports/ + sample PDFs (needs no internet)
 ```
 

@@ -430,6 +430,20 @@ chosen_date = st.sidebar.date_input(
         else f"Recorded data runs from {data_start.date()} to {data_end.date()}. For later dates, pick one ward and enter its recent weather."
     ),
 )
+VIEW_LABELS = {"dashboard": ("📈 Forecast dashboard", "📈 পূর্বাভাস ড্যাশবোর্ড"),
+               "command": ("🚑 Command Center", "🚑 কমান্ড সেন্টার")}
+view = st.sidebar.radio(
+    "দেখুন" if is_bn else "View",
+    list(VIEW_LABELS),
+    format_func=lambda v: VIEW_LABELS[v][1 if is_bn else 0],
+    key="app_view",
+    help=(
+        "কমান্ড সেন্টার: সরবরাহ বরাদ্দ, শয্যা স্থানান্তর, মশক নিধন সিমুলেটর, বার্তা, অফলাইন ও কর্মকর্তা পোর্টাল — একই শহর ও সপ্তাহের জন্য।"
+        if is_bn
+        else "Command Center: supply allocation, bed routing, vector-control simulator, notices, offline and the officer "
+             "portal — for the same city and week."
+    ),
+)
 
 st.sidebar.divider()
 st.sidebar.header("🌧️ " + ("আবহাওয়া সিমুলেটর (What-if)" if is_bn else "What-if Simulator"))
@@ -477,29 +491,6 @@ with nav_left:
         """,
         unsafe_allow_html=True,
     )
-
-h2_acc = metrics["horizons"][f"h{HORIZONS[0]}"]["lightgbm"]["tier_accuracy"]
-if is_bn:
-    trust_items = [
-        "২ থেকে ৪ সপ্তাহ আগে আগাম পূর্বাভাস",
-        f"{features['ward_id'].nunique()}টি ওয়ার্ড ও {len(cities)}টি শহর পর্যবেক্ষণ",
-        f"২-সপ্তাহের টিয়ার নির্ভুলতা {h2_acc:.0%}",
-        f"ডেটা পরিসর: {data_start:%b %Y} – {data_end:%b %Y}",
-    ]
-else:
-    trust_items = [
-        "2–4 Week Early-Warning Horizon",
-        f"{features['ward_id'].nunique()} Wards Across {len(cities)} Cities",
-        f"{h2_acc:.0%} Risk-Tier Accuracy (2-Week)",
-        f"Data Span: {data_start:%b %Y} – {data_end:%b %Y}",
-    ]
-
-st.markdown(
-    '<div class="trust-strip">'
-    + "".join(f'<div class="trust-item"><span class="trust-dot"></span>{item}</div>' for item in trust_items)
-    + "</div>",
-    unsafe_allow_html=True,
-)
 
 city_display = ("সব শহর" if is_bn else "All cities") if city == ALL_CITIES else city
 if overview:
@@ -1259,10 +1250,15 @@ def tab_label(h: int) -> str:
     return label
 
 
+if view == "command":   # sidebar switch, right under "Forecast from week of"
+    st.subheader("🚑 " + ("কমান্ড সেন্টার" if is_bn else "Command Center"))
+    render_command_center(None if manual_mode else issue_week, city, is_bn, data_end)
+    render_historical_replay_and_ethics(preds, features, is_bn)
+    st.stop()
+
 tabs = st.tabs(
     [tab_label(h) for h in HORIZONS]
     + ["📊 নির্ভুলতা (রিভিউয়ারদের জন্য)" if is_bn else "📊 Accuracy (for reviewers)"]
-    + ["🚑 কমান্ড সেন্টার" if is_bn else "🚑 Command Center"]
 )
 for h, tab in zip(HORIZONS, tabs):
     with tab:
@@ -1283,9 +1279,5 @@ for h, tab in zip(HORIZONS, tabs):
             render_horizon(h)
             render_map_and_dispatch(h, week_tbl, features, issue_week, is_bn)
 
-with tabs[-2]:
-    render_accuracy()
-
 with tabs[-1]:
-    render_command_center(None if manual_mode else issue_week, city, is_bn, data_end)
-    render_historical_replay_and_ethics(preds, features, is_bn)
+    render_accuracy()

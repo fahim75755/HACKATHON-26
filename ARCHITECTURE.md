@@ -134,7 +134,7 @@ flowchart LR
     M[(models/lgbm_h2,h3,h4)] --> S[simulator.py<br/>breeding-water counterfactual]
     S --> R1[resources.py<br/>water-filling supplies + ROI crews]
     C --> R1 --> R2[routing.py<br/>intra-city MILP transfers]
-    R2 --> U[ui_command.py<br/>Command Center tab]
+    R2 --> U[ui_command.py<br/>Command Center view, sidebar switch]
     R2 --> N[notify.py<br/>SMS / WhatsApp / brief / escalation]
     N --> U
     N --> E[make_exports.py -> exports/]
@@ -248,7 +248,7 @@ Also tried: XGBoost, HistGradientBoosting, random forest, extra trees, Poisson G
 models stay - they also power the P90 range, the drivers and the simulator.
 
 ### Tests
-94 automated tests: Phase 1 (31), contract and same-number online vs offline, allocation invariants, MILP routing,
+95 automated tests: Phase 1 (31), contract and same-number online vs offline, allocation invariants, MILP routing,
 officer portal (who is queued, who sees what, password hashing, login, admin panel, phone validation, last-admin guard, brute-force brake),
 simulator (0 crews = 0, monotone, efficacy), notices (SMS limits, four required items, escalation rule,
 determinism), Command Center UI smoke (AppTest), offline kill-switch and fallback ladder.

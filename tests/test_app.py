@@ -30,7 +30,7 @@ class TestDashboard(unittest.TestCase):
         at = self._run()
         labels = [t.label for t in at.tabs]
         self.assertEqual(labels[3], "📊 Accuracy (for reviewers)")
-        self.assertIn("🚑 Command Center", labels)  # Phase 2 tab (it has its own sub-tabs)
+        self.assertNotIn("🚑 Command Center", labels)   # Phase 2 now opens from the sidebar "View" switch
         for h in (2, 3, 4):
             self.assertTrue(any(f"{h} weeks ahead" in x for x in labels), labels)
         self.assertTrue(any("of 60 wards" in m.value for m in at.markdown))
@@ -56,7 +56,20 @@ class TestDashboard(unittest.TestCase):
         at.sidebar.date_input[0].set_value(dt.date(2016, 2, 1)).run()
         at.sidebar.slider[0].set_value(100).run()
         self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
-        self.assertIn("🚑 Command Center", [t.label for t in at.tabs])
+        self.assertEqual(len(at.tabs), 4)   # 2/3/4 weeks + accuracy
+
+    def test_sidebar_view_switch_opens_command_center(self):
+        """The Command Center sits in the sidebar, right below 'Forecast from week of'."""
+        at = self._run()
+        names = [getattr(w, "label", None) for w in at.sidebar.children.values()]
+        self.assertLess(names.index("Forecast from week of"), names.index("View"))
+        at.sidebar.radio(key="app_view").set_value("command").run()
+        self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
+        labels = [t.label for t in at.tabs]
+        self.assertTrue(any("Officer portal" in x for x in labels), labels)          # Command Center sub-tabs
+        self.assertFalse(any("weeks ahead" in x for x in labels), labels)            # dashboard tabs hidden
+        at.sidebar.radio(key="app_view").set_value("dashboard").run()
+        self.assertTrue(any("weeks ahead" in t.label for t in at.tabs))
 
     def test_future_date_uses_typed_weather(self):
         at = self._run()
