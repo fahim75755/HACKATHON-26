@@ -205,8 +205,70 @@ def get_engine():
         return PreviewParams, preview_command_center, "preview"
 
 
-def is_offline() -> bool:
+NET_PROBE_SECONDS = 10   # how often the sidebar re-checks the connection (one tiny socket probe)
+
+
+def _probe_online() -> bool:
+    """Is the internet reachable? One 1 s socket probe at most every NET_PROBE_SECONDS per session."""
+    import time
+    now = time.monotonic()
+    cached = st.session_state.get("_net_probe")
+    if cached and now - cached[0] < NET_PROBE_SECONDS:
+        return cached[1]
+    try:
+        from dengue.fallback import check_connectivity, reset_connectivity_cache
+        reset_connectivity_cache()
+        ok = bool(check_connectivity(timeout=1.0))
+    except Exception:
+        ok = True   # never let the probe itself break the app
+    st.session_state["_net_probe"] = (now, ok)
+    return ok
+
+
+def _desired_offline_state():
+    """(offline, reason) the toggle should show now.
+
+    reason: "env" (ALERTAHEAD_OFFLINE=1), "manual" (officer switched it on: a true kill-switch,
+    no probing at all), "auto" (no internet detected) or None (online).
+    """
+    if os.environ.get(OFFLINE_ENV) == "1":
+        return True, "env"
+    if st.session_state.get("offline_mode") and st.session_state.get("_offline_reason") == "manual":
+        return True, "manual"
+    online = _probe_online()
+    return (False, None) if online else (True, "auto")
+
+
+def _sync_offline_state() -> None:
+    """Keep the toggle in step with the network. Must run BEFORE the toggle widget is created."""
+    offline, reason = _desired_offline_state()
+    st.session_state["offline_mode"] = offline
+    st.session_state["_offline_reason"] = reason
+
+
+def _on_toggle() -> None:
+    # Officer flipped it by hand: ON = manual kill-switch (stays on, zero network calls);
+    # OFF = back to automatic (if the internet is still down, the next check switches it on again).
+    st.session_state["_offline_reason"] = "manual" if st.session_state.get("offline_mode") else None
+    st.session_state.pop("_net_probe", None)
+
+
+@st.fragment(run_every=NET_PROBE_SECONDS)
+def _net_watch() -> None:
+    """Re-checks the connection every few seconds; reruns the page only when the state flips."""
+    if os.environ.get(OFFLINE_ENV) == "1" or st.session_state.get("_offline_reason") == "manual":
+        return
+    if _desired_offline_state()[0] != bool(st.session_state.get("offline_mode")):
+        st.rerun()
+
+
+def offline_forced() -> bool:
+    """Offline for this page: env var, manual kill-switch, or auto-detected loss of internet."""
     return bool(st.session_state.get("offline_mode", False)) or os.environ.get(OFFLINE_ENV) == "1"
+
+
+def is_offline() -> bool:
+    return offline_forced()
 
 
 @st.cache_data(show_spinner=False, max_entries=64)
@@ -254,16 +316,28 @@ def scenario_id(**kw) -> str:
 
 
 def render_offline_toggle(is_bn: bool) -> bool:
-    """Sidebar kill-switch + badge (R5). The toggle is the demo's 'turn the internet off' switch."""
+    """Sidebar kill-switch + badge (R5), synchronised with the real connection:
+    internet lost -> switches ON by itself; internet back -> switches OFF by itself.
+    Switched ON by hand it is a true kill-switch (zero network calls) until switched off."""
+    _sync_offline_state()
     st.sidebar.divider()
-    st.sidebar.toggle(_t(is_bn, "Offline mode (kill-switch)", "অফলাইন মোড (কিল-সুইচ)"),
-                      key="offline_mode", value=os.environ.get(OFFLINE_ENV) == "1",
-                      help=_t(is_bn, "Blocks every optional internet call (live weather, map tiles). Forecasts, allocation, routing and notices always run locally.",
-                              "সব ঐচ্ছিক ইন্টারনেট কল বন্ধ (লাইভ আবহাওয়া, ম্যাপ টাইল)। পূর্বাভাস, বরাদ্দ, স্থানান্তর ও বার্তা সবসময় লোকালি চলে।"))
-    off = is_offline()
-    st.sidebar.caption(("🟡 " + _t(is_bn, "Offline mode — 0 network calls", "অফলাইন মোড — ০ নেটওয়ার্ক কল")) if off
-                       else ("🟢 " + _t(is_bn, "Online — internet used only for optional weather & map tiles", "অনলাইন — শুধু ঐচ্ছিক আবহাওয়া ও ম্যাপ টাইলের জন্য ইন্টারনেট")))
-    return off
+    st.sidebar.toggle(_t(is_bn, "Offline mode (kill-switch)", "অফলাইন মোড (কিল-সুইচ)"), key="offline_mode", on_change=_on_toggle,
+                      help=_t(is_bn, "Turns on by itself when the internet drops and off when it returns. Switch it on by hand to block every "
+                                     "optional internet call (live weather, map tiles). Forecasts, allocation, routing and notices always run locally.",
+                              "ইন্টারনেট চলে গেলে নিজে থেকে চালু হয়, ফিরলে বন্ধ হয়। হাতে চালু করলে সব ঐচ্ছিক ইন্টারনেট কল বন্ধ থাকে (লাইভ আবহাওয়া, ম্যাপ টাইল)। "
+                                     "পূর্বাভাস, বরাদ্দ, স্থানান্তর ও বার্তা সবসময় লোকালি চলে।"))
+    with st.sidebar:
+        _net_watch()
+    reason = st.session_state.get("_offline_reason")
+    if reason == "auto":
+        st.sidebar.caption("🟡 " + _t(is_bn, "No internet detected — switched to offline automatically (maps without tiles, cached weather)",
+                                      "ইন্টারনেট নেই — নিজে থেকেই অফলাইনে গেছে (টাইল ছাড়া ম্যাপ, ক্যাশ করা আবহাওয়া)"))
+    elif reason in ("manual", "env"):
+        st.sidebar.caption("🟡 " + _t(is_bn, "Offline mode (kill-switch) — 0 network calls", "অফলাইন মোড (কিল-সুইচ) — ০ নেটওয়ার্ক কল"))
+    else:
+        st.sidebar.caption("🟢 " + _t(is_bn, "Online — internet used only for optional weather & map tiles",
+                                      "অনলাইন — শুধু ঐচ্ছিক আবহাওয়া ও ম্যাপ টাইলের জন্য ইন্টারনেট"))
+    return offline_forced()
 
 
 # ------------------------------------------------------------------ main entry

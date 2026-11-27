@@ -1050,6 +1050,7 @@ def render_ward_week(h: int, weeks: pd.DataFrame, X: pd.DataFrame, fc) -> None:
                 zerolinecolor="#CBD5E1",
             ),
         )
+        fig.update_layout(dragmode=False)  # no accidental zoom-box (grey overlay) during a demo
         st.plotly_chart(fig, key=f"drivers_{h}")
         st.caption(
             "🌧️💧🌡️ আবহাওয়া · 🏘️ ওয়ার্ডের অবস্থা · 📅 মৌসুম · 🦟 সাম্প্রতিক রোগী"
@@ -1121,6 +1122,7 @@ def render_ward_week(h: int, weeks: pd.DataFrame, X: pd.DataFrame, fc) -> None:
             ),
             legend=dict(orientation="h", y=1.15),
         )
+        fig.update_layout(dragmode=False)
         st.plotly_chart(fig, key=f"rain_{h}")
 
 
