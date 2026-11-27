@@ -331,17 +331,26 @@ def _kpis(wards, cities, crews_total, is_bn):
     sr, sa = wards["saline_req"].sum(), wards["saline_alloc"].sum()
     kr, ka = wards["kits_req"].sum(), wards["kits_alloc"].sum()
     dem, cap = cities["demand"].sum(), cities["capacity"].sum()
-    k = st.columns(6)
-    k[0].metric(_t(is_bn, "Expected cases", "আনুমানিক রোগী"), f"{wards['pred'].sum():,.0f}",
-                help=_t(is_bn, "Sum of the forecast for the target week", "লক্ষ্য সপ্তাহের পূর্বাভাসের যোগফল"))
-    k[1].metric(_t(is_bn, "Saline need met", "স্যালাইন পূরণ"), f"{(sa / sr if sr else 1):.0%}", f"{sa:,} / {sr:,}", delta_color="off")
-    k[2].metric(_t(is_bn, "Test-kit need met", "কিট পূরণ"), f"{(ka / kr if kr else 1):.0%}", f"{ka:,} / {kr:,}", delta_color="off")
-    k[3].metric(_t(is_bn, "Bed load", "শয্যার চাপ"), f"{(dem / cap if cap else 0):.0%}",
-                _t(is_bn, f"{int(cities['unmet'].sum())} without a bed", f"{int(cities['unmet'].sum())} জন শয্যাহীন"), delta_color="inverse")
-    k[4].metric(_t(is_bn, "Red alerts", "লাল সতর্কতা"), int(wards["red"].sum()),
-                _t(is_bn, f"{int(wards['code_black'].sum())} CODE BLACK", f"{int(wards['code_black'].sum())} কোড ব্ল্যাক"), delta_color="off")
-    k[5].metric(_t(is_bn, "Spraying crews", "স্প্রে টিম"), f"{int(wards['crews'].sum())} / {crews_total}",
-                _t(is_bn, f"{wards['prevented'].sum():.1f} cases prevented", f"{wards['prevented'].sum():.1f} রোগী প্রতিরোধ"), delta_color="off")
+    unmet, black = int(cities["unmet"].sum()), int(wards["code_black"].sum())
+    # Sub-lines are plain captions, not st.metric deltas: a delta always draws an up/down arrow,
+    # which would read as "rising" for numbers that are just context (e.g. "1,161 / 1,934").
+    tiles = [
+        (_t(is_bn, "Expected cases", "আনুমানিক রোগী"), f"{wards['pred'].sum():,.0f}",
+         _t(is_bn, "forecast for the target week", "লক্ষ্য সপ্তাহের পূর্বাভাস")),
+        (_t(is_bn, "Saline need met", "স্যালাইন পূরণ"), f"{(sa / sr if sr else 1):.0%}",
+         _t(is_bn, f"{sa:,} of {sr:,} bags", f"{sr:,}টির মধ্যে {sa:,} ব্যাগ")),
+        (_t(is_bn, "Test-kit need met", "কিট পূরণ"), f"{(ka / kr if kr else 1):.0%}",
+         _t(is_bn, f"{ka:,} of {kr:,} kits", f"{kr:,}টির মধ্যে {ka:,} কিট")),
+        (_t(is_bn, "Bed load", "শয্যার চাপ"), f"{(dem / cap if cap else 0):.0%}",
+         (("✕ " if unmet else "✓ ") + _t(is_bn, f"{unmet} without a bed after routing", f"স্থানান্তরের পর {unmet} জন শয্যাহীন"))),
+        (_t(is_bn, "Red alerts", "লাল সতর্কতা"), f"{int(wards['red'].sum())}",
+         (("■ " if black else "") + _t(is_bn, f"{black} CODE BLACK", f"{black}টি কোড ব্ল্যাক"))),
+        (_t(is_bn, "Spraying crews", "স্প্রে টিম"), f"{int(wards['crews'].sum())} / {crews_total}",
+         _t(is_bn, f"{wards['prevented'].sum():.1f} cases prevented (2–4 wk)", f"{wards['prevented'].sum():.1f} জন রোগী প্রতিরোধ (২–৪ সপ্তাহ)")),
+    ]
+    for col, (label, value, sub) in zip(st.columns(6), tiles):
+        col.metric(label, value)   # the app's CSS already draws each metric as a card
+        col.caption(sub)
 
 
 # ------------------------------------------------------------------ ① allocation
