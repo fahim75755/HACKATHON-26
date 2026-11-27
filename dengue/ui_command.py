@@ -316,18 +316,18 @@ def scenario_id(**kw) -> str:
 
 
 # Scenario controls: defaults and one-click presets (they write the widget values before the next run).
-CC_DEFAULTS = {"cc_h": 3, "cc_stock": 60, "cc_buffer": 0, "cc_crews": 8, "cc_eff": 30, "cc_reserve": 0, "cc_cap": 100, "cc_ov_on": False}
+CC_DEFAULTS = {"cc_h": 3, "cc_stock": 60, "cc_crews": 8, "cc_eff": 30, "cc_cap": 100}
 PRESETS = {
     "reset": {},
     "full": {"cc_stock": 100},
-    "short": {"cc_stock": 30, "cc_buffer": 10},
+    "short": {"cc_stock": 30},
     "surge": {"cc_cap": 130},
 }
 PRESET_HELP = {
     "reset": ("Back to the default scenario: +3 weeks, 60% stock, 8 crews, 100% beds.",
               "ডিফল্ট পরিস্থিতিতে ফেরা: +৩ সপ্তাহ, ৬০% মজুদ, ৮টি টিম, ১০০% শয্যা।"),
     "full": ("Every ward gets everything it needs (100% stock).", "প্রতিটি ওয়ার্ড যা লাগে সব পাবে (১০০% মজুদ)।"),
-    "short": ("Stress test: only 30% stock and a 10% safety buffer.", "স্ট্রেস টেস্ট: মাত্র ৩০% মজুদ ও ১০% নিরাপত্তা বাফার।"),
+    "short": ("Stress test: only 30% of the needed stock is available.", "স্ট্রেস টেস্ট: প্রয়োজনের মাত্র ৩০% মজুদ আছে।"),
     "surge": ("Open 30% extra beds in every ward (130% capacity).", "প্রতিটি ওয়ার্ডে ৩০% বাড়তি শয্যা খোলা (১৩০% সক্ষমতা)।"),
 }
 
@@ -402,34 +402,24 @@ def render_command_center(issue_week, city_choice: str, is_bn: bool, data_end) -
             col.button(_t(is_bn, en, bn), key=f"cc_preset_{name}", on_click=_apply_preset, args=(name,), width="stretch",
                        help=_t(is_bn, PRESET_HELP[name][0], PRESET_HELP[name][1]))
 
-        st.markdown('<div class="cc-group">📦 ' + _t(is_bn, "Forecast & supply", "পূর্বাভাস ও মজুদ") + "</div>", unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns(4)
+        st.markdown('<div class="cc-group">📦 ' + _t(is_bn, "Forecast, supply & crews", "পূর্বাভাস, মজুদ ও টিম") + "</div>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
         h = c1.radio(_t(is_bn, "Lead time", "আগাম সময়"), HORIZONS, horizontal=True, key="cc_h",
                      format_func=lambda x: _t(is_bn, f"+{x} wk", f"+{notify.num(x, 'bn')} সপ্তাহ"),
                      help=_t(is_bn, "How many weeks ahead to plan for.", "কত সপ্তাহ আগের জন্য পরিকল্পনা।"))
         stock = c2.slider(_t(is_bn, "Available regional stock (%)", "আঞ্চলিক মজুদ (%)"), 30, 100, step=5, key="cc_stock",
                           help=_t(is_bn, "Share of the needed saline and test kits that is actually in store.",
                                   "প্রয়োজনীয় স্যালাইন ও কিটের কত ভাগ আসলে মজুদে আছে।"))
-        buffer = c3.slider(_t(is_bn, "Safety buffer (%)", "নিরাপত্তা বাফার (%)"), 0, 30, step=5, key="cc_buffer",
-                           help=_t(is_bn, "Raises required stock only — a stress test.", "শুধু প্রয়োজন বাড়ায় — স্ট্রেস টেস্ট।"))
-        with c4.popover("🎛️ " + _t(is_bn, "Separate saline / kit stock", "আলাদা স্যালাইন / কিট মজুদ"), width="stretch"):
-            ov_on = st.toggle(_t(is_bn, "Use separate stock levels", "আলাদা মজুদ ব্যবহার"), key="cc_ov_on")
-            ov_s = st.slider(_t(is_bn, "Saline stock (%)", "স্যালাইন মজুদ (%)"), 30, 100, stock, 5, key="cc_ov_s", disabled=not ov_on)
-            ov_k = st.slider(_t(is_bn, "Kit stock (%)", "কিট মজুদ (%)"), 30, 100, stock, 5, key="cc_ov_k", disabled=not ov_on)
-        overrides = {"saline": ov_s, "kits": ov_k} if ov_on else {}
-        if ov_on:
-            c4.caption("✓ " + _t(is_bn, f"Saline {ov_s}% · Kits {ov_k}%", f"স্যালাইন {ov_s}% · কিট {ov_k}%"))
+        crews = c3.slider(_t(is_bn, "Total spraying crews", "মোট স্প্রে টিম"), 0, 30, step=1, key="cc_crews")
 
-        st.markdown('<div class="cc-group">🏥 ' + _t(is_bn, "Beds & spraying crews", "শয্যা ও স্প্রে টিম") + "</div>", unsafe_allow_html=True)
-        d1, d2, d3, d4 = st.columns(4)
+        st.markdown('<div class="cc-group">🏥 ' + _t(is_bn, "Beds & crew impact", "শয্যা ও টিমের প্রভাব") + "</div>", unsafe_allow_html=True)
+        d1, d2, _ = st.columns(3)
         cap_pct = d1.slider(_t(is_bn, "Bed capacity (% of ward P90)", "শয্যা সক্ষমতা (ওয়ার্ড P90-এর %)"), 50, 200, step=10, key="cc_cap",
                             help=_t(is_bn, "100% = each ward's 2016–2023 P90 weekly bed need. Raise it to model surge beds opened.",
                                     "১০০% = প্রতিটি ওয়ার্ডের ২০১৬–২০২৩ সালের P90 সাপ্তাহিক শয্যা চাহিদা। অতিরিক্ত শয্যা খুললে বাড়ান।"))
-        reserve = d2.radio(_t(is_bn, "Reserve beds at receivers", "গ্রহণকারী ওয়ার্ডে খালি শয্যা"), (0, 1), horizontal=True, key="cc_reserve",
-                           help=_t(is_bn, "Beds a receiving ward keeps free for its own patients.", "গ্রহণকারী ওয়ার্ড নিজের রোগীর জন্য যত শয্যা খালি রাখে।"))
-        crews = d3.slider(_t(is_bn, "Total spraying crews", "মোট স্প্রে টিম"), 0, 30, step=1, key="cc_crews")
-        eff = d4.slider(_t(is_bn, "Crew efficacy (%)", "টিমের কার্যকারিতা (%)"), 10, 60, step=5, key="cc_eff",
+        eff = d2.slider(_t(is_bn, "Crew efficacy (%)", "টিমের কার্যকারিতা (%)"), 10, 60, step=5, key="cc_eff",
                         help=_t(is_bn, "Breeding-site reduction per crew (assumption).", "প্রতি টিমে প্রজনন স্থান কমে (অনুমান)।"))
+        buffer, reserve, overrides = 0, 0, {}   # fixed: not scenario controls in the brief
         offline = is_offline()
 
     issue = str(pd.Timestamp(issue_week).date())
@@ -441,7 +431,6 @@ def render_command_center(issue_week, city_choice: str, is_bn: bool, data_end) -
             st.session_state["cc_manual_crews"] = {w: int(n) for w, n in zip(auto_w["ward_id"], auto_w["crews"]) if n > 0}
         manual = st.session_state["cc_manual_crews"]
     run_args = auto_args + ((json.dumps(manual, sort_keys=True),) if manual is not None else ())
-    st.session_state["_cc_run_args"] = (issue, city) + run_args
     wards, transfers, cities, alerts, source, kind = _run(issue, h, city, *run_args)
     target = pd.Timestamp(issue_week) + pd.Timedelta(weeks=h)
     sid = scenario_id(issue=issue, h=h, city=city, stock=stock, buffer=buffer, crews=crews, eff=eff, reserve=reserve, ov=overrides, cap=cap_pct)
@@ -462,7 +451,7 @@ def render_command_center(issue_week, city_choice: str, is_bn: bool, data_end) -
     with tabs[0]:
         _intro(is_bn, "Who gets how much saline and how many test kits. Use the buttons to show only the wards that need attention.",
                "কোন ওয়ার্ড কত স্যালাইন ও টেস্ট কিট পাবে। শুধু জরুরি ওয়ার্ড দেখতে নিচের বোতাম ব্যবহার করুন।")
-        _allocation(wards, city, is_bn, issue, stock, buffer, crews, eff, reserve, overrides, offline)
+        _allocation(wards, is_bn)
     with tabs[1]:
         _intro(is_bn, "Which wards run out of beds, and where their patients are sent inside the same city.",
                "কোন ওয়ার্ডে শয্যা কম পড়ছে, আর রোগীদের একই শহরের কোন ওয়ার্ডে পাঠানো হচ্ছে।")
@@ -511,7 +500,7 @@ def _kpis(wards, cities, crews_total, is_bn):
 
 
 # ------------------------------------------------------------------ ① allocation
-def _allocation(wards, city, is_bn, issue, stock, buffer, crews, eff, reserve, overrides, offline):
+def _allocation(wards, is_bn):
     filt = st.segmented_control(_t(is_bn, "Show", "দেখান"), ["all", "short", "red", "black"], default="all", key="cc_filter",
                                 format_func=lambda x: {"all": _t(is_bn, "All wards", "সব ওয়ার্ড"), "short": _t(is_bn, "Shortfall", "ঘাটতি"),
                                                        "red": _t(is_bn, "Red alert", "লাল সতর্কতা"), "black": _t(is_bn, "CODE BLACK", "কোড ব্ল্যাক")}[x])
@@ -544,8 +533,7 @@ def _allocation(wards, city, is_bn, issue, stock, buffer, crews, eff, reserve, o
     st.caption(_t(is_bn, "Risk ● colour = tier; every status also has a text label. Click a column header to sort.",
                   "ঝুঁকির ● রং = স্তর; প্রতিটি অবস্থার পাশে লেখাও আছে। সাজাতে কলামের শিরোনামে ক্লিক করুন।"))
 
-    a, b = st.columns([1.1, 1])
-    with a:
+    with st.columns([1.1, 1])[0]:
         st.markdown("**" + _t(is_bn, "Saline need met, by risk tier", "ঝুঁকির স্তর অনুযায়ী স্যালাইন পূরণ") + "**")
         rows = []
         for tr in reversed(TIERS):
@@ -560,20 +548,6 @@ def _allocation(wards, city, is_bn, issue, stock, buffer, crews, eff, reserve, o
         fig.update_layout(height=220, margin=dict(l=0, r=60, t=6, b=0), xaxis=dict(range=[0, 1.15], tickformat=".0%", gridcolor="#e1e0d9"),
                           yaxis=dict(autorange="reversed"), plot_bgcolor="#fcfcfb", paper_bgcolor="#ffffff", bargap=0.35)
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-    with b:
-        st.markdown("**" + _t(is_bn, "Procurement outlook — order now", "ক্রয় পরিকল্পনা — এখনই অর্ডার") + "**")
-        rows = []
-        for hh in HORIZONS:
-            a = st.session_state["_cc_run_args"]
-            ww, *_ = _run(a[0], hh, a[1], *a[2:])
-            rows.append({_t(is_bn, "Lead time", "আগাম সময়"): f"+{hh} wk · {(pd.Timestamp(issue) + pd.Timedelta(weeks=hh)):%d %b}",
-                         _t(is_bn, "Saline short", "স্যালাইন ঘাটতি"): int((ww["saline_req"] - ww["saline_alloc"]).clip(lower=0).sum()),
-                         _t(is_bn, "Saline required", "স্যালাইন প্রয়োজন"): int(ww["saline_req"].sum()),
-                         _t(is_bn, "Kits short", "কিট ঘাটতি"): int((ww["kits_req"] - ww["kits_alloc"]).clip(lower=0).sum()),
-                         _t(is_bn, "Kits required", "কিট প্রয়োজন"): int(ww["kits_req"].sum())})
-        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
-        st.caption(_t(is_bn, "+4 weeks is the order-now line: enough lead time to restock before the peak.",
-                      "+৪ সপ্তাহ = এখনই অর্ডারের সারি: চূড়ার আগে মজুদ ভরার মতো সময়।"))
 
 
 # ------------------------------------------------------------------ ② routing
@@ -727,10 +701,10 @@ def _dispatch(wards, transfers, cities, ctx, is_bn):
     icon = lambda r: "■" if r.code_black else "✕" if r.red else "!" if r.deficit else "✓"  # noqa: E731
     c1, c2, c3, c4 = st.columns([1.3, 1.2, 1, 1.2])
     ward_id = c1.selectbox(_t(is_bn, "Notice for ward", "যে ওয়ার্ডের বার্তা"), order["ward_id"], key="cc_d_ward",
-                           format_func=lambda w: f"{icon(order.set_index('ward_id').loc[w])} {w}")
+                           format_func=lambda w: f"{icon(order.set_index('ward_id').loc[w])} {w}", filter_mode=None)
     aud = c2.selectbox(_t(is_bn, "Audience", "প্রাপক"), ["comm", "hcm", "cs", "city"], key="cc_d_aud",
                        format_func=lambda a: {"comm": _t(is_bn, "Ward commissioner", "ওয়ার্ড কমিশনার"), "hcm": _t(is_bn, "Health-centre manager", "স্বাস্থ্যকেন্দ্র ব্যবস্থাপক"),
-                                              "cs": _t(is_bn, "Civil surgeon (escalation)", "সিভিল সার্জন (জরুরি)"), "city": _t(is_bn, "City summary", "শহরের সারসংক্ষেপ")}[a])
+                                              "cs": _t(is_bn, "Civil surgeon (escalation)", "সিভিল সার্জন (জরুরি)"), "city": _t(is_bn, "City summary", "শহরের সারসংক্ষেপ")}[a], filter_mode=None)
     lang = c3.radio(_t(is_bn, "Language", "ভাষা"), ["en", "bn", "both"], horizontal=True, key="cc_d_lang",
                     format_func=lambda x: {"en": "English", "bn": "বাংলা", "both": _t(is_bn, "Both", "দুটোই")}[x])
     w = order.set_index("ward_id").loc[ward_id].to_dict() | {"ward_id": ward_id}

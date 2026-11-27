@@ -178,7 +178,7 @@ def _queue_view(queue: pd.DataFrame, store: db.Store, me: dict, is_bn: bool) -> 
     levels = f1.multiselect(_t(is_bn, "Alert level", "সতর্কতার স্তর"), list(ob.PRIORITY), default=["CODE BLACK", "ESCALATION", "RED"],
                             key="op_f_level", help=_t(is_bn, "Add 🟠 SHORTFALL to see every short ward (at low stock that is most wards).",
                                                       "প্রতিটি ঘাটতির ওয়ার্ড দেখতে 🟠 SHORTFALL যোগ করুন (কম মজুদে প্রায় সব ওয়ার্ড)।"))
-    city = f2.selectbox(_t(is_bn, "City", "শহর"), ["All"] + sorted(mine["city"].unique()), key="op_f_city")
+    city = f2.selectbox(_t(is_bn, "City", "শহর"), ["All"] + sorted(mine["city"].unique()), key="op_f_city", filter_mode=None)
     only_open = f3.toggle(_t(is_bn, "Only not yet sent", "শুধু পাঠানো বাকি"), key="op_f_open")
     view = mine[mine["level"].isin(levels)] if levels else mine
     if city != "All":
@@ -210,9 +210,9 @@ def _officers_admin(store: db.Store, me: dict, wards_map: dict, is_bn: bool) -> 
         username = st.text_input(_t(is_bn, "User name (e.g. dncc05)", "ইউজার নেম (যেমন dncc05)"), key="op_add_user")
         name = st.text_input(_t(is_bn, "Full name", "পুরো নাম"), key="op_add_name")
         role = st.selectbox(_t(is_bn, "Role", "ভূমিকা"), list(db.ROLES), index=2, key="op_add_role",
-                            format_func=lambda r: ob.ROLE_NAME[r][1 if is_bn else 0])
-        ward = st.selectbox(_t(is_bn, "Ward (ward officer)", "ওয়ার্ড (ওয়ার্ড কর্মকর্তা)"), [""] + ward_ids, key="op_add_ward")
-        city = st.selectbox(_t(is_bn, "City (city officer)", "শহর (শহর কর্মকর্তা)"), [""] + CITIES, key="op_add_city")
+                            format_func=lambda r: ob.ROLE_NAME[r][1 if is_bn else 0], filter_mode=None)
+        ward = st.selectbox(_t(is_bn, "Ward (ward officer)", "ওয়ার্ড (ওয়ার্ড কর্মকর্তা)"), [""] + ward_ids, key="op_add_ward", filter_mode=None)
+        city = st.selectbox(_t(is_bn, "City (city officer)", "শহর (শহর কর্মকর্তা)"), [""] + CITIES, key="op_add_city", filter_mode=None)
         pw = st.text_input(_t(is_bn, "Password (empty = generate one)", "পাসওয়ার্ড (খালি রাখলে তৈরি হবে)"), type="password", key="op_add_pw")
         if st.form_submit_button(_t(is_bn, "Add", "যোগ করুন"), key="op_add_go", type="primary"):
             pw = pw or access.new_password()
@@ -225,19 +225,19 @@ def _officers_admin(store: db.Store, me: dict, wards_map: dict, is_bn: bool) -> 
                 st.error(str(e))
     with b.container(border=True):
         st.markdown("✏️ **" + _t(is_bn, "Edit, disable or reset", "সম্পাদনা, বন্ধ বা রিসেট") + "**")
-        who = st.selectbox(_t(is_bn, "Officer", "কর্মকর্তা"), list(df["username"]), key="op_edit_who")
+        who = st.selectbox(_t(is_bn, "Officer", "কর্মকর্তা"), list(df["username"]), key="op_edit_who", filter_mode=None)
         cur = store.officer(who)
         if cur:
             with st.form("op_edit", clear_on_submit=False):
                 name = st.text_input(_t(is_bn, "Full name", "পুরো নাম"), value=cur["full_name"], key=f"op_edit_name_{who}")
                 role = st.selectbox(_t(is_bn, "Role", "ভূমিকা"), list(db.ROLES), index=list(db.ROLES).index(cur["role"]),
-                                    key=f"op_edit_role_{who}", format_func=lambda r: ob.ROLE_NAME[r][1 if is_bn else 0])
+                                    key=f"op_edit_role_{who}", format_func=lambda r: ob.ROLE_NAME[r][1 if is_bn else 0], filter_mode=None)
                 wopts = [""] + ward_ids
                 ward = st.selectbox(_t(is_bn, "Ward", "ওয়ার্ড"), wopts, index=wopts.index(cur["ward_id"]) if cur["ward_id"] in wopts else 0,
-                                    key=f"op_edit_ward_{who}")
+                                    key=f"op_edit_ward_{who}", filter_mode=None)
                 copts = [""] + CITIES
                 city = st.selectbox(_t(is_bn, "City", "শহর"), copts, index=copts.index(cur["city"]) if cur["city"] in copts else 0,
-                                    key=f"op_edit_city_{who}")
+                                    key=f"op_edit_city_{who}", filter_mode=None)
                 active = st.checkbox(_t(is_bn, "Active (can log in)", "সক্রিয় (লগইন করতে পারবেন)"), value=bool(cur["active"]),
                                      key=f"op_edit_active_{who}")
                 if st.form_submit_button(_t(is_bn, "Save", "সংরক্ষণ"), key="op_edit_go"):

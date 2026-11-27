@@ -23,7 +23,7 @@ from dengue.config import (
 from dengue.model import load_artifacts
 from dengue.tiers import DEFAULT_THRESHOLDS, TIER_META, TIERS, assign_risk_tier
 from dengue.ui_command import render_command_center, render_offline_toggle
-from dengue.ui_extras import render_historical_replay_and_ethics, render_map_and_dispatch
+from dengue.ui_extras import render_ethics_note, render_map_and_dispatch
 
 st.set_page_config(
     page_title="AlertAhead | Dengue Early-Warning",
@@ -549,7 +549,7 @@ TIER_ACTION_BN = {
 # ---------------------------------------------------------------- top header & language toggle
 nav_left, nav_right = st.columns([5, 1.25])
 with nav_right:
-    lang = st.selectbox("Language / ভাষা", ["English", "বাংলা"], label_visibility="collapsed")
+    lang = st.selectbox("Language / ভাষা", ["English", "বাংলা"], label_visibility="collapsed", filter_mode=None)
 
 is_bn = lang == "বাংলা"
 
@@ -589,6 +589,7 @@ city = st.sidebar.selectbox(
     "শহর" if is_bn else "City",
     [ALL_CITIES] + cities,
     format_func=lambda x: ("সব শহর" if is_bn else "All cities") if x == ALL_CITIES else x,
+    filter_mode=None,   # pick from the list only: no typing into the box
 )
 pool = features if city == ALL_CITIES else features[features["city"] == city]
 wards = sorted(pool["ward_id"].unique())
@@ -601,6 +602,7 @@ ward = st.sidebar.selectbox(
         if is_bn
         else "Pick one ward for its detailed forecast, or All wards to see every ward ranked by risk."
     ),
+    filter_mode=None,
 )
 chosen_date = st.sidebar.date_input(
     "কোন সপ্তাহ থেকে পূর্বাভাস" if is_bn else "Forecast from week of",
@@ -1436,7 +1438,7 @@ def tab_label(h: int) -> str:
 if view == "command":   # sidebar switch, right under "Forecast from week of"
     st.subheader("🚑 " + ("কমান্ড সেন্টার" if is_bn else "Command Center"))
     render_command_center(None if manual_mode else issue_week, city, is_bn, data_end)
-    render_historical_replay_and_ethics(preds, features, is_bn)
+    render_ethics_note(is_bn)
     st.stop()
 
 tabs = st.tabs(

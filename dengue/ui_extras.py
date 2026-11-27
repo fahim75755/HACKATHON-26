@@ -15,7 +15,6 @@ from dengue.ops import (
     OFFLINE_WEATHER_FALLBACK,
     allocate_teams,
     attach_coordinates,
-    backtest_allocation,
     build_sms_preview,
     check_weather_bounds,
     fetch_live_weather,
@@ -483,6 +482,7 @@ def render_map_and_dispatch(
                 "শহর (লাইভ আবহাওয়া)" if is_bn else "City (Live Weather)",
                 options=list(CITY_CENTERS.keys()),
                 key=f"ops_wcity_h{h}",
+                filter_mode=None,
             )
             if st.button("🔄 লাইভ আবহাওয়া দেখুন" if is_bn else "🔄 Fetch Live 7-Day Weather", key=f"ops_wbtn_h{h}"):
                 st.session_state[f"ops_weather_last_h{h}"] = _weather(city_pick)
@@ -517,6 +517,7 @@ def render_map_and_dispatch(
                 "ওয়ার্ড নির্বাচন (ফিল্ড রিপোর্ট)" if is_bn else "Ward (Field Report)",
                 options=all_ward_ids,
                 key=f"ops_rward_h{h}",
+                filter_mode=None,
             )
             rep_note = st.text_input(
                 "মাঠের পর্যবেক্ষণ লিখুন" if is_bn else "Enter ground observation",
@@ -558,132 +559,8 @@ def render_map_and_dispatch(
                 )
 
 
-def render_historical_replay_and_ethics(
-    preds: pd.DataFrame,
-    features: pd.DataFrame,
-    is_bn: bool,
-) -> None:
-    """Render VIGIA-style 2025 historical dispatch backtest + Responsible AI / Privacy note."""
-    st.divider()
-    st.subheader(
-        "🔁 ঐতিহাসিক ব্যাকটেস্ট রিপ্লে (২০২৫ বাস্তব ডেটায় টিম ডিসপ্যাচ প্রমাণ)"
-        if is_bn
-        else "🔁 Historical Dispatch Replay (2025 Unseen Test-Year Proof)"
-    )
-    st.caption(
-        "অতীতের অদেখা ২০২৫ সালের প্রতিটি সপ্তাহে সমানভাবে টিম পাঠানো বনাম AlertAhead-এর ডিসপ্যাচ প্ল্যান বনাম "
-        "ভবিষ্যৎ জানা থাকলে সর্বোচ্চ সম্ভব কভারেজের (Oracle Ceiling) সরাসরি তুলনা।"
-        if is_bn
-        else "Compares Even Split vs. AlertAhead Dispatch vs. Perfect Foresight (Oracle Ceiling) "
-             "on unseen 2025 recorded dengue cases."
-    )
-
-    rc1, rc2, rc3 = st.columns([1.0, 1.0, 1.4])
-    with rc1:
-        bt_h = st.selectbox(
-            "লিড টাইম (ব্যাকটেস্ট)" if is_bn else "Lead time (backtest)",
-            options=[2, 3, 4],
-            format_func=lambda x: f"+{x} সপ্তাহ" if is_bn else f"+{x} weeks",
-            key="ops_bt_h",
-        )
-    with rc2:
-        bt_teams = st.slider(
-            "টিম সংখ্যা (ব্যাকটেস্ট)" if is_bn else "Teams (backtest)",
-            min_value=5,
-            max_value=20,
-            value=10,
-            step=5,
-            key="ops_bt_teams",
-        )
-
-    # Available active 2025 issue weeks
-    valid_weeks = sorted(
-        preds.loc[
-            (pd.to_datetime(preds["date"]) + pd.Timedelta(weeks=bt_h)).dt.year == 2025,
-            "date",
-        ].unique().tolist()
-    )
-    week_options = ["ALL_2025"] + [pd.Timestamp(d) for d in valid_weeks]
-    with rc3:
-        wk_pick = st.selectbox(
-            "সপ্তাহ নির্বাচন" if is_bn else "Replay scope",
-            options=week_options,
-            format_func=lambda x: (
-                ("সম্পূর্ণ ২০২৫ সিজন (সব সক্রিয় সপ্তাহ)" if is_bn else "Full 2025 Season (all active weeks)")
-                if x == "ALL_2025"
-                else f"{pd.Timestamp(x):%d %b %Y}"
-            ),
-            key="ops_bt_week",
-        )
-
-    bt = backtest_allocation(
-        preds=preds,
-        features=features,
-        horizon=bt_h,
-        n_teams=bt_teams,
-        test_year=2025,
-        issue_date=None if wk_pick == "ALL_2025" else wk_pick,
-    )
-
-    bm1, bm2, bm3 = st.columns(3)
-    bm1.metric(
-        "সমান বণ্টন (বেসলাইন)" if is_bn else "Even Split (Baseline)",
-        f"{bt['even_split_pct']:.1f}%",
-    )
-    bm2.metric(
-        "AlertAhead ডিসপ্যাচ" if is_bn else "AlertAhead Plan",
-        f"{bt['alertahead_pct']:.1f}%",
-        delta=f"+{bt['alertahead_pct'] - bt['even_split_pct']:.1f}%",
-    )
-    bm3.metric(
-        "সর্বোচ্চ তাত্ত্বিক সীমা (Oracle)" if is_bn else "Perfect Foresight (Ceiling)",
-        f"{bt['oracle_pct']:.1f}%",
-    )
-
-    labels = (
-        ["সমান বণ্টন", "AlertAhead প্ল্যান", "সর্বোচ্চ সীমা (Oracle)"]
-        if is_bn
-        else ["Even Split", "AlertAhead Plan", "Perfect Foresight (Oracle)"]
-    )
-    vals = [bt["even_split_pct"], bt["alertahead_pct"], bt["oracle_pct"]]
-    fig_bt = go.Figure(
-        go.Bar(
-            x=labels,
-            y=vals,
-            text=[f"{v:.1f}%" for v in vals],
-            textposition="outside",
-            marker_color=["#94A3B8", "#0F4C5C", "#2E938B"],
-        )
-    )
-    fig_bt.update_layout(
-        height=270,
-        margin=dict(l=14, r=14, t=24, b=14),
-        yaxis=dict(
-            title="বাস্তব রোগী কভারেজ (%)" if is_bn else "Share of Real Cases Covered (%)",
-            range=[0, max(vals + [35]) * 1.25],
-            gridcolor="#EAF0EF",
-        ),
-        plot_bgcolor="#FFFFFF",
-        paper_bgcolor="#FFFFFF",
-    )
-    st.plotly_chart(fig_bt, key="ops_bt_chart")
-
-    if wk_pick != "ALL_2025" and not bt["week_detail"].empty:
-        pred_col = f"pred_h{bt_h}"
-        act_col = f"target_h{bt_h}"
-        top_rep = bt["week_detail"].sort_values(pred_col, ascending=False).head(bt_teams)[
-            ["ward_id", "city", pred_col, act_col]
-        ].copy()
-        top_rep[pred_col] = top_rep[pred_col].round(1)
-        top_rep[act_col] = top_rep[act_col].round(0).astype(int)
-        top_rep.columns = (
-            ["ওয়ার্ড", "শহর", "পূর্বাভাস", "বাস্তব রোগী"]
-            if is_bn
-            else ["Ward", "City", "Predicted", "Actual Cases"]
-        )
-        st.dataframe(top_rep, hide_index=True)
-
-    # ---------------------------------------------------------- Responsible AI & Privacy-by-Design Note
+def render_ethics_note(is_bn: bool) -> None:
+    """Responsible AI / privacy note shown under the Command Center."""
     st.info(
         "🛡️ **দায়িত্বশীল AI ও গোপনীয়তা নোট:** এই সিস্টেমটি শুধুমাত্র ওয়ার্ড-ভিত্তিক অ্যাগ্রিগেটেড জনস্বাস্থ্য ও আবহাওয়া ডেটা ব্যবহার করে—কোনো ব্যক্তিগত রোগীর তথ্য সংগ্রহ বা সংরক্ষণ করা হয় না। "
         "AlertAhead একটি সিদ্ধান্ত-সহায়ক টুল (Decision-Support System), মেডিকেল ডায়াগনসিস নয়; প্রতিটি ডিসপ্যাচ প্ল্যানে মাঠপর্যায়ের কর্মকর্তার অনুমোদন ও অডিট লগ বাধ্যতামূলক।"
