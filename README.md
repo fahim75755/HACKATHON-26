@@ -130,14 +130,14 @@ across all 60 wards. Everything runs locally (no internet, no LLM).
 * **Demo scenario:** forecast from **30 Jun 2025**, **+3 weeks**, stock 60 %, 8 crews → 27 red-alert wards, 3 intra-city
   transfers, Dhaka North's bed pool exhausted (1 CODE BLACK ward); High wards get 79 % of their saline vs 35 % for
   Medium, and 8 crews prevent ≈ 163 cases over +2–4 weeks (crew efficacy 30 % is an explicit assumption).
-* **Exports:** `python make_exports.py --pdf` rewrites [`exports/`](exports/) offline (byte-identical on re-run) and prints sample briefs to PDF.
+* **Exports:** `python make_exports.py` rewrites [`exports/`](exports/) offline (byte-identical on re-run) and prints sample briefs to PDF.
 * **Model check (accuracy first):** 12 models compared (LightGBM variants, XGBoost, CatBoost, HistGradientBoosting,
   random forest, extra trees, Poisson GLM, ensembles), chosen on 2024 only and reported on 2025: none beat the
   Phase-1 LightGBM by more than 2 % MAE, so the models are unchanged (details in ARCHITECTURE.md).
 
 ```bash
 python -m unittest discover -s tests -v   # 70 tests incl. allocation, routing, simulator, notices, offline kill-switch
-python make_exports.py --pdf              # regenerate exports/ (needs no internet)
+python make_exports.py                    # regenerate exports/ + sample PDFs (needs no internet)
 ```
 
 ## Team

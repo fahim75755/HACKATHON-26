@@ -1,6 +1,6 @@
 """Write sample dispatch exports to exports/ (R4 + R5), fully offline.
 
-Usage:  python make_exports.py [--date 2025-06-30] [--horizon 3] [--stock 60] [--crews 8] [--pdf]
+Usage:  python make_exports.py [--date 2025-06-30] [--horizon 3] [--stock 60] [--crews 8] [--no-pdf]
 
 Uses the same engine as the app (dengue.ui_command.get_engine -> backend, or the labelled preview)
 and the same templates (dengue/notify.py), so the files always match what the app shows.
@@ -31,7 +31,8 @@ def main() -> None:
     ap.add_argument("--stock", type=int, default=60)
     ap.add_argument("--crews", type=int, default=8)
     ap.add_argument("--efficacy", type=float, default=0.30)
-    ap.add_argument("--pdf", action="store_true", help="also print 3 sample briefs to PDF with a local headless Edge/Chrome")
+    ap.add_argument("--pdf", action="store_true", help="(default) print sample briefs to PDF with a local headless Edge/Chrome")
+    ap.add_argument("--no-pdf", action="store_true", help="skip the sample PDFs")
     args = ap.parse_args()
 
     Params, run, kind = get_engine()
@@ -70,7 +71,7 @@ def main() -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8", newline="\n")
     print(f"Wrote {len(files)} files to {OUT} (engine: {kind}, scenario {sid})")
-    if args.pdf:
+    if not args.no_pdf:   # exports/ is rebuilt from scratch, so the sample PDFs are re-made every run
         print_sample_pdfs(wards)
 
 

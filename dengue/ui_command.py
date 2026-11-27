@@ -390,7 +390,7 @@ def _allocation(wards, city, is_bn, issue, stock, buffer, crews, eff, reserve, o
         _t(is_bn, "Flags", "সংকেত"): [_flag_text(r, is_bn) for _, r in w.iterrows()],
     })
     pc = st.column_config.ProgressColumn
-    st.dataframe(view, hide_index=True, use_container_width=True, height=420, column_config={
+    st.dataframe(view, hide_index=True, width="stretch", height=420, column_config={
         _t(is_bn, "Saline fill", "স্যালাইন পূরণ"): pc(format="percent", min_value=0, max_value=1),
         _t(is_bn, "Kit fill", "কিট পূরণ"): pc(format="percent", min_value=0, max_value=1)})
     st.caption(_t(is_bn, "Risk ● colour = tier; every status also has a text label. Click a column header to sort.",
@@ -411,7 +411,7 @@ def _allocation(wards, city, is_bn, issue, stock, buffer, crews, eff, reserve, o
                         hovertemplate=f"{_tier_label(tr, is_bn)} · {n} wards<br>{al:,} / {rq:,}<extra></extra>")
         fig.update_layout(height=220, margin=dict(l=0, r=60, t=6, b=0), xaxis=dict(range=[0, 1.15], tickformat=".0%", gridcolor="#e1e0d9"),
                           yaxis=dict(autorange="reversed"), plot_bgcolor="#fcfcfb", paper_bgcolor="#ffffff", bargap=0.35)
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     with b:
         st.markdown("**" + _t(is_bn, "Procurement outlook — order now", "ক্রয় পরিকল্পনা — এখনই অর্ডার") + "**")
         rows = []
@@ -423,7 +423,7 @@ def _allocation(wards, city, is_bn, issue, stock, buffer, crews, eff, reserve, o
                          _t(is_bn, "Saline required", "স্যালাইন প্রয়োজন"): int(ww["saline_req"].sum()),
                          _t(is_bn, "Kits short", "কিট ঘাটতি"): int((ww["kits_req"] - ww["kits_alloc"]).clip(lower=0).sum()),
                          _t(is_bn, "Kits required", "কিট প্রয়োজন"): int(ww["kits_req"].sum())})
-        st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
         st.caption(_t(is_bn, "+4 weeks is the order-now line: enough lead time to restock before the peak.",
                       "+৪ সপ্তাহ = এখনই অর্ডারের সারি: চূড়ার আগে মজুদ ভরার মতো সময়।"))
 
@@ -445,7 +445,7 @@ def _routing(wards, transfers, cities, is_bn):
         cols = st.columns(2 if len(shown) > 1 else 1)
         for i, c in enumerate(shown):
             with cols[i % len(cols)]:
-                st.plotly_chart(_city_map(c, wards[wards["city"] == c], transfers, is_bn), use_container_width=True,
+                st.plotly_chart(_city_map(c, wards[wards["city"] == c], transfers, is_bn), width="stretch",
                                 config={"displayModeBar": False}, key=f"cc_map_{c}")
         st.caption("● ✓ <85% · ! 85–100% " + _t(is_bn, "surge", "চাপ") + " · ✕ >100% " + _t(is_bn, "overflow", "উপচে পড়া")
                    + " · → " + _t(is_bn, "patients routed. Ward positions are approximate reference points.", "স্থানান্তরিত রোগী। ওয়ার্ডের অবস্থান আনুমানিক।"))
@@ -461,14 +461,14 @@ def _routing(wards, transfers, cities, is_bn):
             fig.add_vline(x=x, line_color="#4E646B", line_dash=dash, line_width=1)
         fig.update_layout(height=250, margin=dict(l=0, r=90, t=6, b=0), xaxis=dict(range=[0, max(1.6, cs["utilization"].max() * 1.25)], tickformat=".0%", gridcolor="#e1e0d9"),
                           plot_bgcolor="#fcfcfb", paper_bgcolor="#ffffff", showlegend=False)
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         st.markdown("**" + _t(is_bn, "Transfers (same city only)", "স্থানান্তর (শুধু একই শহরে)") + "**")
         if transfers.empty:
             st.caption(_t(is_bn, "No transfers in this scenario.", "এই পরিস্থিতিতে কোনো স্থানান্তর নেই।"))
         else:
             st.dataframe(transfers.rename(columns={"from_ward": _t(is_bn, "From", "থেকে"), "to_ward": _t(is_bn, "To", "যেখানে"),
                                                    "patients": _t(is_bn, "Patients", "রোগী"), "km": "km"}),
-                         hide_index=True, use_container_width=True, column_config={"km": st.column_config.NumberColumn(format="%.1f")})
+                         hide_index=True, width="stretch", column_config={"km": st.column_config.NumberColumn(format="%.1f")})
     st.markdown("**" + _t(is_bn, "Ward bed balance", "ওয়ার্ডভিত্তিক শয্যা হিসাব") + "**")
     b = wards.assign(util=np.where(wards["bed_cap"] > 0, wards["beds_req"] / wards["bed_cap"], 0.0)).sort_values(["util", "ward_id"], ascending=[False, True])
     st.dataframe(pd.DataFrame({
@@ -477,7 +477,7 @@ def _routing(wards, transfers, cities, is_bn):
         _t(is_bn, "Sent", "পাঠানো"): b["sent"], _t(is_bn, "Received", "গ্রহণ"): b["received"], _t(is_bn, "Unmet", "বাকি"): b["unmet"],
         _t(is_bn, "Status", "অবস্থা"): [f"{STATUS_ICON[_bed_status(u)]} " + {"ok": _t(is_bn, "OK", "ঠিক"), "surge": _t(is_bn, "Surge", "চাপ"),
                                                                        "over": _t(is_bn, "Overflow", "উপচে পড়া")}[_bed_status(u)] + f" · {u:.0%}" for u in b["util"]],
-    }), hide_index=True, use_container_width=True, height=320)
+    }), hide_index=True, width="stretch", height=320)
 
 
 def _city_map(city, ws, transfers, is_bn):
@@ -516,7 +516,7 @@ def _crew_picker(wards, crews, is_bn):
     roi_col = "roi_first_crew" if "roi_first_crew" in wards.columns else "pred"   # stable order (does not move as crews change)
     ed = wards.sort_values([roi_col, "ward_id"], ascending=[False, True])[["ward_id", "city", "tier", "pred", roi_col]].copy()
     ed["crews"] = ed["ward_id"].map(current).fillna(0).astype(int)
-    out = st.data_editor(ed, key="cc_manual_editor", hide_index=True, use_container_width=True, height=300,
+    out = st.data_editor(ed, key="cc_manual_editor", hide_index=True, width="stretch", height=300,
                          disabled=["ward_id", "city", "tier", "pred", roi_col],
                          column_config={"crews": st.column_config.NumberColumn(_t(is_bn, "Crews", "টিম"), min_value=0, max_value=6, step=1),
                                         roi_col: st.column_config.NumberColumn(_t(is_bn, "ROI of 1st crew", "প্রথম টিমের ROI"), format="%.2f"),
@@ -561,11 +561,11 @@ def _simulator(wards, issue_week, crews, eff, kind, is_bn):
         fig.update_layout(title=dict(text=title, font=dict(size=13)), barmode="group", bargap=0.3, bargroupgap=0.06, height=290,
                           margin=dict(l=0, r=0, t=40, b=0), legend=dict(orientation="h", y=1.12, x=0),
                           plot_bgcolor="#fcfcfb", paper_bgcolor="#ffffff", yaxis=dict(gridcolor="#e1e0d9"))
-        col.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        col.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     st.markdown("**" + _t(is_bn, "Intervention ROI — cases prevented per crew", "টিমপ্রতি প্রতিরোধ (ROI)") + "**")
     show = [c for c in ["ward_id", "city", "tier", "pred", "roi", "priority_score", "crew_need", "crews", "crew_ids", "prevented"] if c in wards.columns]
     sort_col = "roi" if "roi" in wards.columns else "pred"
-    st.dataframe(wards.sort_values([sort_col, "ward_id"], ascending=[False, True])[show], hide_index=True, use_container_width=True, height=320,
+    st.dataframe(wards.sort_values([sort_col, "ward_id"], ascending=[False, True])[show], hide_index=True, width="stretch", height=320,
                  column_config={"prevented": st.column_config.NumberColumn(format="%.1f"), "roi": st.column_config.NumberColumn(format="%.2f"),
                                 "pred": st.column_config.NumberColumn(format="%.1f")})
     st.caption(_t(is_bn, "ROI is pure (cases prevented per crew, as the rubric defines it); the assignment also weights population density.",
@@ -637,7 +637,7 @@ def _system(wards, transfers, cities, ctx, source, kind, offline, is_bn):
             {"Task": "Map", "1st": "tile map", "If unavailable": "tile-free map", "Last resort": "city × ward grid",
              "Active": "tile-free map" if offline else "tile map (Phase 1 tabs) · tile-free here"},
             {"Task": "Notices", "1st": "templates (always)", "If unavailable": "—", "Last resort": "—", "Active": "templates"},
-        ]), hide_index=True, use_container_width=True)
+        ]), hide_index=True, width="stretch")
         st.caption(("🟡 " + _t(is_bn, "Offline mode is ON: no optional internet calls.", "অফলাইন মোড চালু: কোনো ঐচ্ছিক ইন্টারনেট কল নেই।")) if offline
                    else ("🟢 " + _t(is_bn, "Online. Turn on the sidebar kill-switch (or set ALERTAHEAD_OFFLINE=1) to prove offline runs.",
                                     "অনলাইন। অফলাইনে চলা দেখাতে সাইডবারের কিল-সুইচ চালু করুন (বা ALERTAHEAD_OFFLINE=1)।")))
