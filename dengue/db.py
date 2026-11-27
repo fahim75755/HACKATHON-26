@@ -3,9 +3,11 @@
 * One local file (`data/alertahead.db`, git-ignored; override with ALERTAHEAD_DB). sqlite3 ships with Python,
   so it needs no server and no internet: it keeps working with the kill-switch on.
 * Passwords are stored only as salted PBKDF2 hashes (dengue/access.py).
-* First start: if the officers table is empty, an admin account is created. With ADMIN_PASSWORD in the
-  Streamlit secrets (or env ALERTAHEAD_ADMIN_PASSWORD) that is the admin password and no demo accounts are made;
-  without it the store runs in demo mode with the public demo accounts in DEMO_ACCOUNTS, so judges can sign in.
+* First start: if the officers table is empty, an admin account is created. With ADMIN_USER / ADMIN_PASSWORD in
+  the Streamlit secrets (or env ALERTAHEAD_ADMIN_USER / ALERTAHEAD_ADMIN_PASSWORD) that is the admin and no demo
+  accounts are made; without them the store runs in demo mode with the demo accounts in DEMO_ACCOUNTS.
+  A database first started in demo mode and later opened with ADMIN_PASSWORD gets that admin added and its
+  demo accounts disabled. The page never lists any account or password.
 * On Streamlit Community Cloud the app folder is temporary: the file survives while the app runs but a reboot or
   a new deploy starts it again from the seed. Real deployment would point ALERTAHEAD_DB at a persistent disk.
 """
@@ -83,6 +85,7 @@ class Store:
         self.path = Path(path)
         self.iterations = iterations
         self.demo = not admin_password
+        admin_user = (admin_user or "admin").strip().lower()
         self._lock = threading.Lock()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._conn() as c:
@@ -94,6 +97,24 @@ class Store:
                               (user, name, role, ward, city, access.hash_password(pw, iterations), _now()))
                 c.execute("INSERT INTO audit (at, user, action, detail) VALUES (?,?,?,?)",
                           (_now(), "system", "seed", "demo accounts" if self.demo else f"admin '{admin_user}'"))
+            elif not self.demo:
+                self._adopt_private_admin(c, admin_user, admin_password, iterations)
+
+    @staticmethod
+    def _adopt_private_admin(c: sqlite3.Connection, admin_user: str, admin_password: str, iterations: int) -> None:
+        """A database first started in demo mode, now opened with ADMIN_PASSWORD set: add the configured admin
+        if it is missing, and disable (not delete) every demo account that still has its public password.
+        An existing admin account keeps its password, so a password changed inside the app is never reset."""
+        if c.execute("SELECT 1 FROM officers WHERE username = ?", (admin_user,)).fetchone() is None:
+            c.execute("INSERT INTO officers VALUES (?,?,?,?,?,?,1,?)",
+                      (admin_user, "Control room", "admin", "", "", access.hash_password(admin_password, iterations), _now()))
+            c.execute("INSERT INTO audit (at, user, action, detail) VALUES (?,?,?,?)", (_now(), "system", "seed", f"admin '{admin_user}'"))
+        for user, pw, *_ in DEMO_ACCOUNTS:
+            r = c.execute("SELECT pw_hash, active FROM officers WHERE username = ?", (user,)).fetchone()
+            if user != admin_user and r and r["active"] and access.verify_password(pw, r["pw_hash"]):
+                c.execute("UPDATE officers SET active = 0 WHERE username = ?", (user,))
+                c.execute("INSERT INTO audit (at, user, action, detail) VALUES (?,?,?,?)",
+                          (_now(), "system", "disable demo account", user))
 
     @contextmanager
     def _conn(self):

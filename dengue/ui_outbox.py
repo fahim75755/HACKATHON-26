@@ -1,8 +1,8 @@
 """⑥ Officer portal (a bonus on top of R4): officer login, the alert SMS queue, and an admin panel.
 
 * Login: user name + password, checked against the small SQLite store (dengue/db.py; salted PBKDF2 hashes).
-  5 wrong logins lock that client for 5 minutes. Without ADMIN_PASSWORD in the secrets it runs in demo mode
-  and shows the public demo accounts, so judges are never locked out.
+  5 wrong logins lock that client for 5 minutes. Accounts are never listed on the page: the admin comes from
+  ADMIN_USER / ADMIN_PASSWORD in the Streamlit secrets, and the admin adds every other officer.
 * SMS queue: which wards need an SMS to their medical centre (and which cities need a civil-surgeon escalation).
   The officer opens each SMS in their phone's own SMS app (number + text filled in), sends it, and marks it
   sent / centre confirmed. The app itself sends nothing: no gateway, no API key, no internet.
@@ -101,17 +101,6 @@ def _login(store: db.Store, is_bn: bool) -> None:
             st.session_state.pop("op_pw", None)
             store.log(o["username"], "login")
             st.rerun()
-    if store.demo:
-        with st.container(border=True):
-            st.markdown("🧪 **" + _t(is_bn, "Demo mode", "ডেমো মোড") + "** — " + _t(
-                is_bn, "no ADMIN_PASSWORD is set, so these public demo accounts work (for judges and testing). "
-                       "Set ADMIN_PASSWORD in the Streamlit secrets to start with a private admin and no demo accounts.",
-                "ADMIN_PASSWORD সেট নেই, তাই এই পাবলিক ডেমো অ্যাকাউন্টগুলো কাজ করবে (বিচারক ও পরীক্ষার জন্য)। "
-                "নিজস্ব অ্যাডমিনের জন্য Streamlit secrets-এ ADMIN_PASSWORD দিন।"))
-            st.dataframe(pd.DataFrame([{_t(is_bn, "User name", "ইউজার নেম"): u, _t(is_bn, "Password", "পাসওয়ার্ড"): p,
-                                        _t(is_bn, "Role", "ভূমিকা"): ob.ROLE_NAME[r][1 if is_bn else 0],
-                                        _t(is_bn, "Area", "এলাকা"): w or c or _t(is_bn, "all", "সব")}
-                                       for u, p, _n, r, w, c in db.DEMO_ACCOUNTS]), hide_index=True, width="stretch")
 
 
 def _change_my_password(store: db.Store, me: dict, is_bn: bool) -> None:

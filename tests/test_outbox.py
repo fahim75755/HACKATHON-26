@@ -156,6 +156,20 @@ class StoreTests(unittest.TestCase):
         self.assertIsNotNone(s.authenticate("chief", "Very-Secret-1"))
         self.assertIsNone(s.authenticate("admin", "admin-demo-2026"))
 
+    def test_demo_database_adopts_private_admin(self):
+        """A database first started in demo mode, reopened with ADMIN_USER / ADMIN_PASSWORD set."""
+        s = db.Store(self.path, admin_password="Chief-Pass-9", admin_user=" Chief ", iterations=FAST)
+        self.assertFalse(s.demo)
+        o = s.authenticate("chief", "Chief-Pass-9")
+        self.assertEqual(o["role"], "admin")
+        for user, pw, *_ in db.DEMO_ACCOUNTS:                      # public demo passwords stop working
+            self.assertIsNone(s.authenticate(user, pw), user)
+        self.assertEqual(set(s.officers().query("active == 0")["username"]), {u for u, *_ in db.DEMO_ACCOUNTS})
+        s.set_password("chief", "changed-in-app", by="chief")      # reopening never resets a changed password
+        again = db.Store(self.path, admin_password="Chief-Pass-9", admin_user="chief", iterations=FAST)
+        self.assertIsNotNone(again.authenticate("chief", "changed-in-app"))
+        self.assertEqual(int((again.officers()["username"] == "chief").sum()), 1)
+
     def test_add_officer_and_validation(self):
         self.store.add_officer("dncc05", "Ward 5 officer", "ward", "longpassword", ward_id="DNCC_Ward_05", wards=WARDS_MAP)
         o = self.store.authenticate("dncc05", "longpassword")
@@ -269,7 +283,8 @@ class PortalUITests(unittest.TestCase):
     def test_admin_login_panel_and_add_officer(self):
         at = AppTest.from_function(_portal_page, default_timeout=60).run()
         self.assertFalse(at.exception, at.exception)
-        self.assertTrue(any("Demo mode" in m.value for m in at.markdown))
+        shown = " ".join([m.value for m in at.markdown] + [str(d.value) for d in at.dataframe])
+        self.assertFalse(any(pw in shown for _u, pw, *_ in db.DEMO_ACCOUNTS))   # the page never lists a password
         self.login(at, "admin", "admin-demo-2026")
         self.assertFalse(at.exception, at.exception)
         self.assertEqual(at.session_state["op_username"], "admin")
