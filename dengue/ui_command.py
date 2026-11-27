@@ -198,10 +198,11 @@ def is_offline() -> bool:
 
 @st.cache_data(show_spinner=False, max_entries=64)
 def _run(issue: str, h: int, city: str | None, stock: int, buffer: int, crews: int, eff: float,
-         reserve: int, ov_json: str, offline: bool):
+         reserve: int, ov_json: str, offline: bool, cap_mult: float = 1.0):
     Params, run, kind = get_engine()
+    extra = {"capacity_multiplier": cap_mult} if kind == "backend" else {}
     p = Params(issue_date=issue if kind == "backend" else pd.Timestamp(issue), horizon=h, city=city, stock_pct=stock, buffer_pct=buffer,
-               overrides=json.loads(ov_json) or None, total_crews=crews, efficacy=eff, reserve_beds=reserve, offline=offline)
+               overrides=json.loads(ov_json) or None, total_crews=crews, efficacy=eff, reserve_beds=reserve, offline=offline, **extra)
     wards, transfers, cities, alerts, source = adapt_result(run(p))
     return wards, transfers, cities, alerts, source, kind
 
@@ -275,13 +276,17 @@ def render_command_center(issue_week, city_choice: str, is_bn: bool, data_end) -
             ov_s = st.slider(_t(is_bn, "Saline stock (%)", "স্যালাইন মজুদ (%)"), 30, 100, stock, 5, key="cc_ov_s", disabled=not ov_on)
             ov_k = st.slider(_t(is_bn, "Kit stock (%)", "কিট মজুদ (%)"), 30, 100, stock, 5, key="cc_ov_k", disabled=not ov_on)
         overrides = {"saline": ov_s, "kits": ov_k} if ov_on else {}
+        cap_pct = d4.slider(_t(is_bn, "Bed capacity (% of ward P90)", "শয্যা সক্ষমতা (ওয়ার্ড P90-এর %)"), 50, 200, 100, 10, key="cc_cap",
+                            help=_t(is_bn, "100% = each ward's 2016–2023 P90 weekly bed need. Raise it to model surge beds opened.",
+                                    "১০০% = প্রতিটি ওয়ার্ডের ২০১৬–২০২৩ সালের P90 সাপ্তাহিক শয্যা চাহিদা। অতিরিক্ত শয্যা খুললে বাড়ান।"))
         offline = is_offline()
 
     issue = str(pd.Timestamp(issue_week).date())
-    wards, transfers, cities, alerts, source, kind = _run(issue, h, city, stock, buffer, crews, eff / 100, reserve,
-                                                         json.dumps(overrides, sort_keys=True), offline)
+    run_args = (stock, buffer, crews, eff / 100, reserve, json.dumps(overrides, sort_keys=True), offline, cap_pct / 100)
+    st.session_state["_cc_run_args"] = (issue, city) + run_args
+    wards, transfers, cities, alerts, source, kind = _run(issue, h, city, *run_args)
     target = pd.Timestamp(issue_week) + pd.Timedelta(weeks=h)
-    sid = scenario_id(issue=issue, h=h, city=city, stock=stock, buffer=buffer, crews=crews, eff=eff, reserve=reserve, ov=overrides)
+    sid = scenario_id(issue=issue, h=h, city=city, stock=stock, buffer=buffer, crews=crews, eff=eff, reserve=reserve, ov=overrides, cap=cap_pct)
     ctx = notify.NoticeContext(target=target, horizon=h, stock_pct=stock, total_crews=crews, scenario=sid, source=str(source))
 
     if kind == "preview":
@@ -380,7 +385,8 @@ def _allocation(wards, city, is_bn, issue, stock, buffer, crews, eff, reserve, o
         st.markdown("**" + _t(is_bn, "Procurement outlook — order now", "ক্রয় পরিকল্পনা — এখনই অর্ডার") + "**")
         rows = []
         for hh in HORIZONS:
-            ww, *_ = _run(issue, hh, city, stock, buffer, crews, eff / 100, reserve, json.dumps(overrides, sort_keys=True), offline)
+            a = st.session_state["_cc_run_args"]
+            ww, *_ = _run(a[0], hh, a[1], *a[2:])
             rows.append({_t(is_bn, "Lead time", "আগাম সময়"): f"+{hh} wk · {(pd.Timestamp(issue) + pd.Timedelta(weeks=hh)):%d %b}",
                          _t(is_bn, "Saline short", "স্যালাইন ঘাটতি"): int((ww["saline_req"] - ww["saline_alloc"]).clip(lower=0).sum()),
                          _t(is_bn, "Saline required", "স্যালাইন প্রয়োজন"): int(ww["saline_req"].sum()),

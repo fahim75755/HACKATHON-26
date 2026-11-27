@@ -39,7 +39,7 @@ from dengue.phase2_config import (
 USE_REAL: Dict[str, bool] = {
     "resources": True,
     "routing": True,
-    "simulator": False,
+    "simulator": True,
 }
 
 
@@ -72,16 +72,11 @@ class CommandResult:
 
 
 def _assign_tier(pred_series: pd.Series) -> pd.Series:
-    """Assign deterministic Watch/Risk tier using Phase-1 helper if available."""
-    try:
-        from dengue.engine import watch_tier
+    """Phase-1 risk tiers (Low < 3 <= Medium < 9 <= High < 20 <= Critical), so the Command Center
+    agrees with the 2/3/4-week tabs. Phase 1 "Medium" keeps its backend label "Watch"."""
+    from dengue.tiers import assign_risk_tier
 
-        return pred_series.apply(lambda v: str(watch_tier(float(v))))
-    except Exception:
-        vals = pred_series.astype("float64")
-        conditions = [vals >= 20.0, vals >= 10.0, vals >= 4.0]
-        choices = ["Critical", "High", "Watch"]
-        return pd.Series(np.select(conditions, choices, default="Low"), index=pred_series.index)
+    return pred_series.astype("float64").apply(lambda v: assign_risk_tier(float(v))).replace({"Medium": "Watch"})
 
 
 def _normalize_tier_label(label: str) -> str:
@@ -221,7 +216,9 @@ def _run_honest_dummy(
         df["tier"] = _assign_tier(df["pred"])
     df["tier"] = df["tier"].map(_normalize_tier_label)
 
-    use_upper = df["tier"].isin(["Watch", "High", "Critical"])
+    from dengue.resources import expected_beds, planning_on_p90
+
+    use_upper = planning_on_p90(df)
     df["demand_basis"] = np.where(use_upper, df["high_pred"], df["pred"]).astype("float64")
 
     city_max_density = df.groupby("city")["population_density_sqkm"].transform("max").clip(lower=1.0)
@@ -231,11 +228,11 @@ def _run_honest_dummy(
     buf_factor = 1.0 + max(0.0, float(params.buffer_pct)) / 100.0
     base_saline = safe_ceil(rates["saline"] * df["demand_basis"])
     base_kits = safe_ceil(rates["kits"] * df["demand_basis"])
-    base_beds = safe_ceil(rates["beds"] * df["demand_basis"])
+    base_beds = expected_beds(df, rates)
 
     df["saline_required"] = safe_ceil(base_saline * buf_factor)
     df["kits_required"] = safe_ceil(base_kits * buf_factor)
-    df["beds_required"] = safe_ceil(base_beds * buf_factor)
+    df["beds_required"] = base_beds
 
     overrides = params.overrides or {}
     saline_pct = float(overrides.get("saline", params.stock_pct)) / 100.0
@@ -344,14 +341,14 @@ def run_command_center(
     wards, transfers, cities, alerts = _run_honest_dummy(base_df, params, rates)
 
     sim_output = None
+    real_sim = None
     if flags["simulator"]:
         try:
             from dengue import simulator as real_sim
 
-            sim_output = real_sim.run_simulator(wards, params, rates)
-            wards = real_sim.attach_simulator_columns(wards, sim_output)
-        except ImportError:
-            pass
+            sim_output = real_sim.run_simulator(wards, params, rates) or None
+        except Exception:  # model files missing / unreadable -> deterministic crew heuristic (fallback)
+            sim_output = None
 
     if flags["resources"]:
         try:
@@ -366,6 +363,10 @@ def run_command_center(
             cities, alerts = _summarize_cities_and_alerts(wards, transfers)
         except ImportError:
             pass
+
+    # Prevented cases are attached AFTER crews are assigned (they depend on how many crews each ward got).
+    if sim_output and real_sim is not None:
+        wards = real_sim.attach_simulator_columns(wards, sim_output, rates)
 
     if flags["routing"]:
         try:
@@ -389,6 +390,8 @@ def run_command_center(
         "flags": flags,
         "rates": rates,
         "timestamp": params.timestamp,
+        "simulator": ({k: sim_output[k] for k in ("source", "efficacy", "max_crews", "non_monotone_points")}
+                      if sim_output else {"source": "crew heuristic (simulator off or models unavailable)"}),
     }
     return CommandResult(
         wards=wards,

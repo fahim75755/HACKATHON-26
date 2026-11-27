@@ -267,6 +267,19 @@ def allocate_spraying_crews(
     return needed, assigned, np.round(base_score, 4)
 
 
+def planning_on_p90(df: pd.DataFrame) -> np.ndarray:
+    """True where supplies are planned on the P90 range: High/Critical, or the P90 itself reaches High."""
+    from dengue.tiers import DEFAULT_THRESHOLDS
+
+    high = float(DEFAULT_THRESHOLDS["high"])
+    return (df["tier"].isin(["High", "Critical"]) | (df["high_pred"].astype("float64") >= high)).to_numpy()
+
+
+def expected_beds(df: pd.DataFrame, rates: Dict[str, float]) -> np.ndarray:
+    """Beds on the expected forecast, rounded (float noise removed first)."""
+    return np.round(np.round(rates["beds"] * df["pred"].astype("float64").to_numpy(), 6)).astype(int)
+
+
 def allocate_resources(
     wards: pd.DataFrame,
     params: Any,
@@ -277,14 +290,18 @@ def allocate_resources(
     """Run full R1 constrained resource allocation on the ward DataFrame."""
     df = wards.copy().reset_index(drop=True)
 
-    # High/Critical/Watch use P90 upper range (high_pred); Low uses point forecast
-    use_upper = df["tier"].isin(["Watch", "High", "Critical"])
+    # Supplies: High/Critical wards, and "watch" wards whose P90 reaches High, plan on the P90
+    # upper range (safety stock); everyone else on the point forecast.
+    use_upper = planning_on_p90(df)
     df["demand_basis"] = np.where(use_upper, df["high_pred"], df["pred"]).astype("float64")
 
     # Base demand (before Safety Buffer)
     base_saline = safe_ceil(rates["saline"] * df["demand_basis"])
     base_kits = safe_ceil(rates["kits"] * df["demand_basis"])
-    base_beds = safe_ceil(rates["beds"] * df["demand_basis"])
+    # Beds are physical capacity shared through routing: expected load, rounded exactly like
+    # the dataset (hospital_beds_required = round(rate x cases)) and like the P90 capacity.
+    # Planning beds on P90 + ceil overflowed every ward and left no headroom to route into.
+    base_beds = expected_beds(df, rates)
 
     # Safety Buffer % (0-30%, default 0): increases required, keeps stock tied to base_demand
     buffer_pct = max(0.0, float(getattr(params, "buffer_pct", 0.0)))
@@ -296,7 +313,7 @@ def allocate_resources(
         buf_mult = 1.0 + buffer_pct / 100.0
         req_saline = safe_ceil(base_saline * buf_mult)
         req_kits = safe_ceil(base_kits * buf_mult)
-        req_beds = safe_ceil(base_beds * buf_mult)
+        req_beds = base_beds.copy()  # the buffer is a supply stress test; it does not invent patients
 
     df["saline_required"] = req_saline
     df["kits_required"] = req_kits
