@@ -29,7 +29,8 @@ class TestDashboard(unittest.TestCase):
     def test_all_wards_has_2_3_4_week_tabs(self):
         at = self._run()
         labels = [t.label for t in at.tabs]
-        self.assertEqual(len(labels), 4)
+        self.assertEqual(labels[3], "📊 Accuracy (for reviewers)")
+        self.assertIn("🚑 Command Center", labels)  # Phase 2 tab (it has its own sub-tabs)
         for h in (2, 3, 4):
             self.assertTrue(any(f"{h} weeks ahead" in x for x in labels), labels)
         self.assertTrue(any("of 60 wards" in m.value for m in at.markdown))
@@ -55,7 +56,7 @@ class TestDashboard(unittest.TestCase):
         at.sidebar.date_input[0].set_value(dt.date(2016, 2, 1)).run()
         at.sidebar.slider[0].set_value(100).run()
         self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
-        self.assertEqual(len(at.tabs), 4)
+        self.assertIn("🚑 Command Center", [t.label for t in at.tabs])
 
     def test_future_date_uses_typed_weather(self):
         at = self._run()

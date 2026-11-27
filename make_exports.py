@@ -1,0 +1,74 @@
+"""Write sample dispatch exports to exports/ (R4 + R5), fully offline.
+
+Usage:  python make_exports.py [--date 2025-06-09] [--horizon 3] [--stock 60] [--crews 8]
+
+Uses the same engine as the app (dengue.ui_command.get_engine -> backend, or the labelled preview)
+and the same templates (dengue/notify.py), so the files always match what the app shows.
+Deterministic: running it twice gives byte-identical files.
+"""
+import argparse
+import os
+import shutil
+from pathlib import Path
+
+import pandas as pd
+
+os.environ.setdefault("ALERTAHEAD_OFFLINE", "1")   # exports never touch the network
+
+from dengue import notify  # noqa: E402
+from dengue.ui_command import TRANSFER_COLS, get_engine, scenario_id  # noqa: E402
+
+ROOT = Path(__file__).resolve().parent
+OUT = ROOT / "exports"
+FONT = ROOT / "assets" / "fonts" / "bn-subset.woff2"
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--date", default="2025-06-09")
+    ap.add_argument("--horizon", type=int, default=3, choices=(2, 3, 4))
+    ap.add_argument("--stock", type=int, default=60)
+    ap.add_argument("--crews", type=int, default=8)
+    ap.add_argument("--efficacy", type=float, default=0.30)
+    args = ap.parse_args()
+
+    Params, run, kind = get_engine()
+    p = Params(issue_date=pd.Timestamp(args.date), horizon=args.horizon, city=None, stock_pct=args.stock, buffer_pct=0,
+               overrides=None, total_crews=args.crews, efficacy=args.efficacy, reserve_beds=0, offline=True)
+    r = run(p)
+    transfers = r.transfers if r.transfers is not None else pd.DataFrame(columns=TRANSFER_COLS)
+    sid = scenario_id(issue=args.date, h=args.horizon, city=None, stock=args.stock, buffer=0, crews=args.crews,
+                      eff=round(args.efficacy * 100), reserve=0, ov={})
+    ctx = notify.NoticeContext(target=pd.Timestamp(args.date) + pd.Timedelta(weeks=args.horizon), horizon=args.horizon,
+                               stock_pct=args.stock, total_crews=args.crews, scenario=sid, source=str(getattr(r, "source", kind)))
+
+    font_url = None
+    if OUT.exists():
+        shutil.rmtree(OUT)
+    if FONT.exists():
+        (OUT / "fonts").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(FONT, OUT / "fonts" / FONT.name)
+        font_url = "../fonts/" + FONT.name
+    files = notify.export_files(r.wards, r.cities, transfers, ctx, font_rel_url=font_url)
+    files["README.md"] = (
+        "# AlertAhead dispatch exports\n\n"
+        f"Scenario `{sid}` · issue week {args.date} · +{args.horizon} weeks (target {ctx.target:%Y-%m-%d}) · "
+        f"stock {args.stock}% · crews {args.crews} · engine: {kind}\n\n"
+        "Generated offline by `python make_exports.py` from the templates in `dengue/notify.py` (no LLM, no network).\n\n"
+        "| Folder / file | What |\n|---|---|\n"
+        "| `sms/` | One-segment English SMS (GSM-7, ≤160 chars) and Bangla SMS (≤3 parts) per ward |\n"
+        "| `whatsapp/` | Bangla + English WhatsApp notice per ward |\n"
+        "| `briefs/` | Printable HTML commissioner / health-centre briefs (open → Ctrl+P → Save as PDF) |\n"
+        "| `city_summary/` | Bed headroom, routing and alerts per city |\n"
+        "| `escalation/` | Civil-surgeon escalation, only for cities with CODE BLACK or an exhausted bed pool |\n"
+        "| `allocation.csv`, `routing.csv` | The numbers behind every notice |\n"
+    )
+    for rel, text in files.items():
+        path = OUT / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8", newline="\n")
+    print(f"Wrote {len(files)} files to {OUT} (engine: {kind}, scenario {sid})")
+
+
+if __name__ == "__main__":
+    main()

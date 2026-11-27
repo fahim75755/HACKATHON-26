@@ -9,3 +9,6 @@ font = "sans serif"
 [client]
 # Hide Streamlit's developer tools (Rerun, Clear cache, Print, Record screen, Deploy, menu).
 toolbarMode = "minimal"
+[browser]
+# R5: no usage telemetry, so the app makes no network call of its own when offline.
+gatherUsageStats = false

@@ -12,6 +12,7 @@ import streamlit as st
 
 from dengue.ops import (
     CITY_CENTERS,
+    OFFLINE_WEATHER_FALLBACK,
     allocate_teams,
     attach_coordinates,
     backtest_allocation,
@@ -36,6 +37,19 @@ def _tier_label(tier: str, is_bn: bool) -> str:
 @st.cache_data(ttl=1800, show_spinner=False)
 def _cached_live_weather(city: str) -> dict:
     return fetch_live_weather(city)
+
+
+def _offline_mode() -> bool:
+    """R5 kill-switch from the sidebar toggle (dengue/ui_command.py): no optional internet calls."""
+    from dengue.ui_command import is_offline
+    return is_offline()
+
+
+def _weather(city: str) -> dict:
+    if _offline_mode():
+        fb = OFFLINE_WEATHER_FALLBACK.get(city, OFFLINE_WEATHER_FALLBACK["Dhaka North"])
+        return {"city": city, **fb, "source": "offline_cache", "fetched_at": "Offline mode"}
+    return _cached_live_weather(city)
 
 
 def _merge_ward_traits(week_df: pd.DataFrame, features: pd.DataFrame) -> pd.DataFrame:
@@ -121,7 +135,10 @@ def _build_ward_map(
     cities = mapped["city"].nunique() if "city" in mapped.columns else 1
     zoom = 5.9 if cities > 2 else 10.6
 
-    if map_style == "satellite":
+    if _offline_mode():
+        # Tile-free fallback: markers on a blank background, no tile server is contacted.
+        map_cfg = dict(style="white-bg", center=dict(lat=center_lat, lon=center_lon), zoom=zoom)
+    elif map_style == "satellite":
         map_cfg = dict(
             style="white-bg",
             layers=[
@@ -387,7 +404,7 @@ def render_map_and_dispatch(
                 key=f"ops_wcity_h{h}",
             )
             if st.button("🔄 লাইভ আবহাওয়া দেখুন" if is_bn else "🔄 Fetch Live 7-Day Weather", key=f"ops_wbtn_h{h}"):
-                st.session_state[f"ops_weather_last_h{h}"] = _cached_live_weather(city_pick)
+                st.session_state[f"ops_weather_last_h{h}"] = _weather(city_pick)
             wdata = st.session_state.get(f"ops_weather_last_h{h}")
             if wdata:
                 badge = (

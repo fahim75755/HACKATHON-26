@@ -22,6 +22,7 @@ from dengue.config import (
 )
 from dengue.model import load_artifacts
 from dengue.tiers import DEFAULT_THRESHOLDS, TIER_META, TIERS, assign_risk_tier
+from dengue.ui_command import render_command_center, render_offline_toggle
 from dengue.ui_extras import render_historical_replay_and_ethics, render_map_and_dispatch
 
 st.set_page_config(
@@ -449,6 +450,7 @@ extra_rain = st.sidebar.slider(
     ),
 )
 what_if = extra_rain > 0
+offline_mode = render_offline_toggle(is_bn)
 
 overview = ward == ALL_WARDS
 issue_week = engine.snap_to_week(features, wards[0] if overview else ward, pd.Timestamp(chosen_date))
@@ -1258,6 +1260,7 @@ def tab_label(h: int) -> str:
 tabs = st.tabs(
     [tab_label(h) for h in HORIZONS]
     + ["📊 নির্ভুলতা (রিভিউয়ারদের জন্য)" if is_bn else "📊 Accuracy (for reviewers)"]
+    + ["🚑 কমান্ড সেন্টার" if is_bn else "🚑 Command Center"]
 )
 for h, tab in zip(HORIZONS, tabs):
     with tab:
@@ -1278,6 +1281,9 @@ for h, tab in zip(HORIZONS, tabs):
             render_horizon(h)
             render_map_and_dispatch(h, week_tbl, features, issue_week, is_bn)
 
-with tabs[-1]:
+with tabs[-2]:
     render_accuracy()
+
+with tabs[-1]:
+    render_command_center(None if manual_mode else issue_week, city, is_bn, data_end)
     render_historical_replay_and_ethics(preds, features, is_bn)
