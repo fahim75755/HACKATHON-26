@@ -57,6 +57,8 @@ class CommandParams:
     offline: bool = False
     capacity_multiplier: float = DEFAULT_CAPACITY_MULTIPLIER
     capacity_overrides: Optional[Dict[str, int]] = None
+    # R3 "deploy crews to selected wards": {ward_id: crews}. None = auto-assign by marginal ROI.
+    manual_crews: Optional[Dict[str, int]] = None
     timestamp: Optional[str] = None
 
 

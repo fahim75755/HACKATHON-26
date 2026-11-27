@@ -32,7 +32,7 @@ The dashboard opens at http://localhost:8501.
 
 ```bash
 python train.py                         # ~20 s on a laptop CPU; rebuilds models/ and data/processed/
-python -m unittest discover -s tests -v # 65 tests: Phase 1 (lags, leakage, split, baselines, what-if, dashboard) + Phase 2 (allocation, routing, simulator, notices, offline)
+python -m unittest discover -s tests -v # 70 tests: Phase 1 (lags, leakage, split, baselines, what-if, dashboard) + Phase 2 (allocation, routing, simulator, notices, offline)
 ```
 
 ## Using the dashboard
@@ -121,7 +121,7 @@ across all 60 wards. Everything runs locally (no internet, no LLM).
 |---|---|---|
 | **R1 Constrained allocation** | Sliders: available regional stock 30–100 %, safety buffer, per-resource override, total spraying crews, crew efficacy. Saline / kits / beds per ward with fill bars, shortfall · red alert · CODE BLACK flags, fill-by-tier chart, +2/+3/+4-week procurement table | `dengue/resources.py` |
 | **R2 Overflow routing** | Ward bed load vs capacity (85 % surge / 100 % overflow bands), intra-city transfers (integer MILP, shortest distance), city bed load, "city pool exhausted" alerts, bed-capacity slider | `dengue/routing.py` |
-| **R3 Vector-control simulator** | Crews cut breeding-water features; the same h2/h3/h4 LightGBM models re-run → cases, beds and saline prevented at +2/+3/+4 weeks, ROI (cases prevented per crew) ranking | `dengue/simulator.py` |
+| **R3 Vector-control simulator** | Crews cut breeding-water features; the same h2/h3/h4 LightGBM models re-run → cases, beds and saline prevented at +2/+3/+4 weeks, ROI (cases prevented per crew) ranking; crews auto-assigned by ROI × density or placed by the officer on selected wards | `dengue/simulator.py` |
 | **R4 Dispatch notices** | SMS (English 1 × GSM-7 ≤ 160, Bangla ≤ 3 parts), WhatsApp, printable brief (Bangla font embedded), city summary, civil-surgeon escalation, ZIP of everything | `dengue/notify.py`, `make_exports.py`, [`exports/`](exports/) |
 | **R5 Offline** | Sidebar **Offline mode (kill-switch)** or `ALERTAHEAD_OFFLINE=1`: weather uses the offline cache, maps drop tiles; forecast ladder parquet → live LightGBM → same week last year | `dengue/fallback.py`, `tests/test_offline.py` |
 
@@ -136,7 +136,7 @@ across all 60 wards. Everything runs locally (no internet, no LLM).
   Phase-1 LightGBM by more than 2 % MAE, so the models are unchanged (details in ARCHITECTURE.md).
 
 ```bash
-python -m unittest discover -s tests -v   # 65 tests incl. allocation, routing, simulator, notices, offline kill-switch
+python -m unittest discover -s tests -v   # 70 tests incl. allocation, routing, simulator, notices, offline kill-switch
 python make_exports.py --pdf              # regenerate exports/ (needs no internet)
 ```
 

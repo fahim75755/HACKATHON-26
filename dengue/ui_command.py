@@ -210,10 +210,12 @@ def is_offline() -> bool:
 
 @st.cache_data(show_spinner=False, max_entries=64)
 def _run(issue: str, h: int, city: str | None, stock: int, buffer: int, crews: int, eff: float,
-         reserve: int, ov_json: str, offline: bool, cap_mult: float = 1.0, engine_kind: str = ""):
+         reserve: int, ov_json: str, offline: bool, cap_mult: float = 1.0, engine_kind: str = "", manual_json: str = ""):
     # engine_kind is part of the cache key, so a cached preview is never served once the backend exists
     Params, run, kind = get_engine()
     extra = {"capacity_multiplier": cap_mult} if kind == "backend" else {}
+    if kind == "backend" and manual_json:
+        extra["manual_crews"] = json.loads(manual_json)   # R3: officer-selected wards
     p = Params(issue_date=issue if kind == "backend" else pd.Timestamp(issue), horizon=h, city=city, stock_pct=stock, buffer_pct=buffer,
                overrides=json.loads(ov_json) or None, total_crews=crews, efficacy=eff, reserve_beds=reserve, offline=offline, **extra)
     wards, transfers, cities, alerts, source = adapt_result(run(p))
@@ -295,7 +297,14 @@ def render_command_center(issue_week, city_choice: str, is_bn: bool, data_end) -
         offline = is_offline()
 
     issue = str(pd.Timestamp(issue_week).date())
-    run_args = (stock, buffer, crews, eff / 100, reserve, json.dumps(overrides, sort_keys=True), offline, cap_pct / 100, get_engine()[2])
+    auto_args = (stock, buffer, crews, eff / 100, reserve, json.dumps(overrides, sort_keys=True), offline, cap_pct / 100, get_engine()[2])
+    manual = None
+    if st.session_state.get("cc_crew_mode", "auto") == "manual":
+        if "cc_manual_crews" not in st.session_state:   # first switch: start from the auto plan
+            auto_w = _run(issue, h, city, *auto_args)[0]
+            st.session_state["cc_manual_crews"] = {w: int(n) for w, n in zip(auto_w["ward_id"], auto_w["crews"]) if n > 0}
+        manual = st.session_state["cc_manual_crews"]
+    run_args = auto_args + ((json.dumps(manual, sort_keys=True),) if manual is not None else ())
     st.session_state["_cc_run_args"] = (issue, city) + run_args
     wards, transfers, cities, alerts, source, kind = _run(issue, h, city, *run_args)
     target = pd.Timestamp(issue_week) + pd.Timedelta(weeks=h)
@@ -496,8 +505,39 @@ def _city_map(city, ws, transfers, is_bn):
 
 
 # ------------------------------------------------------------------ ③ simulator
+def _crew_picker(wards, crews, is_bn):
+    """R3: officer deploys a limited number of crews to selected wards (or lets ROI decide)."""
+    mode = st.radio(_t(is_bn, "Crew deployment", "টিম পাঠানো"), ["auto", "manual"], horizontal=True, key="cc_crew_mode",
+                    format_func=lambda m: {"auto": _t(is_bn, "Auto — best ROI × density", "স্বয়ংক্রিয় — সর্বোচ্চ ROI × ঘনত্ব"),
+                                           "manual": _t(is_bn, "Manual — I pick the wards", "নিজে ward বাছাই")}[m])
+    if mode != "manual":
+        return
+    current = dict(st.session_state.get("cc_manual_crews", {}))
+    roi_col = "roi_first_crew" if "roi_first_crew" in wards.columns else "pred"   # stable order (does not move as crews change)
+    ed = wards.sort_values([roi_col, "ward_id"], ascending=[False, True])[["ward_id", "city", "tier", "pred", roi_col]].copy()
+    ed["crews"] = ed["ward_id"].map(current).fillna(0).astype(int)
+    out = st.data_editor(ed, key="cc_manual_editor", hide_index=True, use_container_width=True, height=300,
+                         disabled=["ward_id", "city", "tier", "pred", roi_col],
+                         column_config={"crews": st.column_config.NumberColumn(_t(is_bn, "Crews", "টিম"), min_value=0, max_value=6, step=1),
+                                        roi_col: st.column_config.NumberColumn(_t(is_bn, "ROI of 1st crew", "প্রথম টিমের ROI"), format="%.2f"),
+                                        "pred": st.column_config.NumberColumn(format="%.1f")})
+    new = {w: int(n) for w, n in zip(out["ward_id"], out["crews"]) if int(n) > 0}
+    total = sum(new.values())
+    msg = _t(is_bn, f"{total} of {crews} crews placed.", f"{crews}টির মধ্যে {total}টি টিম বসানো হয়েছে।")
+    if total > crews:
+        st.warning(msg + " " + _t(is_bn, "Only the crew slider's total can go out: the largest requests are served first.",
+                                  "স্লাইডারের মোটের বেশি যাবে না: বড় অনুরোধ আগে পূরণ হবে।"))
+    else:
+        st.caption(msg)
+    if new != current:
+        st.session_state["cc_manual_crews"] = new
+        st.session_state.pop("cc_manual_editor", None)
+        st.rerun()
+
+
 def _simulator(wards, issue_week, crews, eff, kind, is_bn):
-    if kind == "preview" or (wards["prevented"].sum() == 0 and crews > 0):
+    _crew_picker(wards, crews, is_bn)
+    if kind == "preview" or "roi_first_crew" not in wards.columns:   # simulator off / models unavailable
         st.info(_t(is_bn, "The ML counterfactual (h2/h3/h4 LightGBM with reduced breeding-water features) comes from the backend. "
                           "Charts below fill in automatically when it is connected; crews shown now are a top-N preview.",
                    "এমএল কাউন্টারফ্যাকচুয়াল (প্রজনন-পানির ফিচার কমিয়ে h2/h3/h4 LightGBM) ব্যাকএন্ড থেকে আসবে। যুক্ত হলে নিচের চার্ট নিজে থেকেই ভরবে; এখনকার টিম top-N প্রিভিউ।"))

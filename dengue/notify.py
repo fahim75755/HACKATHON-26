@@ -109,6 +109,10 @@ def flags(w) -> dict:
     return {"deficit": deficit, "red": red, "black": black}
 
 
+def _kits(n: int) -> str:
+    return "kit" if int(n) == 1 else "kits"
+
+
 def sms_info(text: str) -> dict:
     """Length, encoding and number of SMS parts (GSM-7: 160/153, Unicode: 70/67)."""
     gsm = bool(_GSM_BASIC.match(text))
@@ -135,9 +139,9 @@ def sms_en(w, ctx: NoticeContext, transfers: pd.DataFrame | None = None, audienc
     if f["black"]:
         alert = f"CODE BLACK: no bed for {_i(w, 'unmet')}, saline short {s}."
     elif f["red"]:
-        alert = f"RED: request {s} saline, {k} kits."
+        alert = f"RED: request {s} saline, {k} {_kits(k)}."
     elif f["deficit"]:
-        alert = f"Short {s} saline, {k} kits."
+        alert = f"Short {s} saline, {k} {_kits(k)}."
     else:
         alert = "No shortfall."
     beds = f"Beds {_i(w, 'beds_req')}/{_i(w, 'bed_cap')}"
@@ -195,10 +199,10 @@ def whatsapp(w, ctx: NoticeContext, transfers: pd.DataFrame | None = None, audie
         alert = (f"⬛ *CODE BLACK* — no bed for {n(_i(w, 'unmet'))} and saline short by {n(s)}. Escalated to the civil surgeon." if en
                  else f"⬛ *কোড ব্ল্যাক* — {n(_i(w, 'unmet'))} জনের শয্যা নেই, স্যালাইন ঘাটতি {n(s)}। সিভিল সার্জনকে জানানো হয়েছে।")
     elif f["red"]:
-        alert = (f"🔴 *RED ALERT* — request {n(s)} saline + {n(k)} kits from the regional store today." if en
+        alert = (f"🔴 *RED ALERT* — request {n(s)} saline + {n(k)} {_kits(k)} from the regional store today." if en
                  else f"🔴 *লাল সতর্কতা* — আজই আঞ্চলিক মজুদ থেকে {n(s)} স্যালাইন ও {n(k)} কিট চান।")
     elif f["deficit"]:
-        alert = (f"🟠 *Shortfall* — {n(s)} saline, {n(k)} kits below need." if en
+        alert = (f"🟠 *Shortfall* — {n(s)} saline, {n(k)} {_kits(k)} below need." if en
                  else f"🟠 *ঘাটতি* — প্রয়োজনের চেয়ে {n(s)} স্যালাইন, {n(k)} কিট কম।")
     else:
         alert = "🟢 No shortfall at this stock level." if en else "🟢 এই মজুদে কোনো ঘাটতি নেই।"

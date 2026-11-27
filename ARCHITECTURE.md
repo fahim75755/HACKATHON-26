@@ -175,7 +175,7 @@ n crews scale the breeding-water features (rain this week and 1-3 weeks back, 4-
 index) by (1 - e)^n; the 4-week anomaly is recomputed against the ward's seasonal normal; the same h2/h3/h4
 LightGBM models are re-run. Baseline and counterfactual come from one live call, so 0 crews prevent exactly 0.
 Prevented cases are clipped >= 0 and made non-decreasing in crews (the few non-monotone model points are
-reported in the result metadata). Beds and saline prevented use the per-case rates; ROI = cases prevented per crew.
+reported in the result metadata). Beds and saline prevented use the per-case rates; ROI = cases prevented per crew. Crews are auto-assigned (marginal ROI x density) or placed by the officer on selected wards (`manual_crews`, capped at the crew slider).
 **Assumption:** efficacy e (default 30 %) is an officer-set parameter, not learned. The models react strongly to
 rain in the monsoon (a 10 % breeding cut lowers +3-week cases by about a third on 30 Jun 2025), so the efficacy
 slider should be read as an upper-bound scenario tool.
@@ -213,6 +213,6 @@ Also tried: XGBoost, HistGradientBoosting, random forest, extra trees, Poisson G
 models stay - they also power the P90 range, the drivers and the simulator.
 
 ### Tests
-65 automated tests: Phase 1 (31), contract and same-number online vs offline, allocation invariants, MILP routing,
+70 automated tests: Phase 1 (31), contract and same-number online vs offline, allocation invariants, MILP routing,
 simulator (0 crews = 0, monotone, efficacy), notices (SMS limits, four required items, escalation rule,
 determinism), Command Center UI smoke (AppTest), offline kill-switch and fallback ladder.

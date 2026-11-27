@@ -175,7 +175,7 @@ def _allocate_consumable_by_city(
     return alloc
 
 
-def allocate_spraying_crews(
+def _allocate_spraying_crews_auto(
     df: pd.DataFrame,
     total_crews: int,
     sim_output: Optional[Dict[str, Any]] = None,
@@ -280,6 +280,37 @@ def expected_beds(df: pd.DataFrame, rates: Dict[str, float]) -> np.ndarray:
     return np.round(np.round(rates["beds"] * df["pred"].astype("float64").to_numpy(), 6)).astype(int)
 
 
+def manual_crew_assignment(ward_ids: list, manual: Dict[str, int], total_crews: int) -> np.ndarray:
+    """Officer-selected crews per ward, capped so the total never exceeds the crew slider.
+
+    If the officer asks for more than the slider allows, the largest requests are served first
+    (ties by ward_id), so the result is deterministic.
+    """
+    want = {str(k): max(0, int(v)) for k, v in (manual or {}).items()}
+    assigned = np.zeros(len(ward_ids), dtype=int)
+    left = max(0, int(total_crews))
+    order = sorted(((want.get(w, 0), w, i) for i, w in enumerate(ward_ids)), key=lambda t: (-t[0], t[1]))
+    for n, _w, i in order:
+        give = min(n, left)
+        assigned[i] = give
+        left -= give
+    return assigned
+
+
+def allocate_spraying_crews(
+    df: pd.DataFrame,
+    total_crews: int,
+    sim_output: Optional[Dict[str, Any]] = None,
+    manual: Optional[Dict[str, int]] = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Crew need, assignment and score. Auto = greedy on marginal ROI x density (fallback heuristic);
+    manual = the officer's selected wards (R3), still reporting need and score for comparison."""
+    needed, assigned, score = _allocate_spraying_crews_auto(df, total_crews, sim_output)
+    if manual is not None:
+        assigned = manual_crew_assignment(df["ward_id"].astype(str).tolist(), manual, total_crews)
+    return needed, assigned, score
+
+
 def allocate_resources(
     wards: pd.DataFrame,
     params: Any,
@@ -367,6 +398,7 @@ def allocate_resources(
         df,
         total_crews=int(getattr(params, "total_crews", 0)),
         sim_output=sim_output,
+        manual=getattr(params, "manual_crews", None),
     )
     df["crews_needed"] = crews_needed
     df["crews_assigned"] = crews_assigned

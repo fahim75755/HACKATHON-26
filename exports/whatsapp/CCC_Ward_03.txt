@@ -19,6 +19,6 @@ _পরিস্থিতি 99b551 · মজুদ ৬০% · অফলাই�
 🧪 Test kits: 23 of 24 (short 1)
 🛏 Beds: 4 needed · 5 available
 🚿 Spraying crews: 1 (Crew-03) · ~19.8 cases prevented
-🔴 *RED ALERT* — request 2 saline + 1 kits from the regional store today.
+🔴 *RED ALERT* — request 2 saline + 1 kit from the regional store today.
 ✅ Deploy larvicide and fogging teams to this ward and alert local clinics.
 _Scenario 99b551 · stock 60% · generated offline_
