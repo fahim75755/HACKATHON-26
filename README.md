@@ -32,7 +32,7 @@ The dashboard opens at http://localhost:8501.
 
 ```bash
 python train.py                         # ~20 s on a laptop CPU; rebuilds models/ and data/processed/
-python -m unittest discover -s tests -v # 31 tests: lags, leakage, split, baselines, outlook, watch flag, what-if, team dispatch, backtest, dashboard (English/Bangla)
+python -m unittest discover -s tests -v # 65 tests: Phase 1 (lags, leakage, split, baselines, what-if, dashboard) + Phase 2 (allocation, routing, simulator, notices, offline)
 ```
 
 ## Using the dashboard
