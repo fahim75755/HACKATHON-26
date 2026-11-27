@@ -315,6 +315,46 @@ def scenario_id(**kw) -> str:
     return hashlib.sha1(json.dumps(kw, sort_keys=True, default=str).encode()).hexdigest()[:6]
 
 
+# Scenario controls: defaults and one-click presets (they write the widget values before the next run).
+CC_DEFAULTS = {"cc_h": 3, "cc_stock": 60, "cc_buffer": 0, "cc_crews": 8, "cc_eff": 30, "cc_reserve": 0, "cc_cap": 100, "cc_ov_on": False}
+PRESETS = {
+    "reset": {},
+    "full": {"cc_stock": 100},
+    "short": {"cc_stock": 30, "cc_buffer": 10},
+    "surge": {"cc_cap": 130},
+}
+PRESET_HELP = {
+    "reset": ("Back to the default scenario: +3 weeks, 60% stock, 8 crews, 100% beds.",
+              "ডিফল্ট পরিস্থিতিতে ফেরা: +৩ সপ্তাহ, ৬০% মজুদ, ৮টি টিম, ১০০% শয্যা।"),
+    "full": ("Every ward gets everything it needs (100% stock).", "প্রতিটি ওয়ার্ড যা লাগে সব পাবে (১০০% মজুদ)।"),
+    "short": ("Stress test: only 30% stock and a 10% safety buffer.", "স্ট্রেস টেস্ট: মাত্র ৩০% মজুদ ও ১০% নিরাপত্তা বাফার।"),
+    "surge": ("Open 30% extra beds in every ward (130% capacity).", "প্রতিটি ওয়ার্ডে ৩০% বাড়তি শয্যা খোলা (১৩০% সক্ষমতা)।"),
+}
+
+
+def _apply_preset(name: str) -> None:
+    st.session_state.update(CC_DEFAULTS | PRESETS[name])
+
+
+def _guide(is_bn: bool) -> None:
+    steps = [
+        (_t(is_bn, "Choose the week", "সপ্তাহ বাছুন"),
+         _t(is_bn, "and city in the left sidebar.", "ও শহর বাঁদিকের সাইডবারে।")),
+        (_t(is_bn, "Set the scenario", "পরিস্থিতি ঠিক করুন"),
+         _t(is_bn, "with the sliders, or press a quick button.", "স্লাইডার দিয়ে, অথবা একটি দ্রুত বোতাম চেপে।")),
+        (_t(is_bn, "Read the numbers", "সংখ্যা দেখুন"),
+         _t(is_bn, "in the cards and the tabs ① – ③.", "কার্ডে ও ① – ③ ট্যাবে।")),
+        (_t(is_bn, "Send the notices", "বার্তা পাঠান"),
+         _t(is_bn, "from tab ④ or the officer portal ⑥.", "④ নম্বর ট্যাব বা ⑥ কর্মকর্তা পোর্টাল থেকে।")),
+    ]
+    html = "".join(f'<div class="cc-step"><span class="cc-num">{i}</span><b>{a}</b> {b}</div>' for i, (a, b) in enumerate(steps, 1))
+    st.markdown(f'<div class="cc-steps">{html}</div>', unsafe_allow_html=True)
+
+
+def _intro(is_bn: bool, en: str, bn: str) -> None:
+    st.markdown(f'<div class="cc-intro">💡 {_t(is_bn, en, bn)}</div>', unsafe_allow_html=True)
+
+
 def render_offline_toggle(is_bn: bool) -> bool:
     """Sidebar kill-switch + badge (R5), synchronised with the real connection:
     internet lost -> switches ON by itself; internet back -> switches OFF by itself.
@@ -347,28 +387,49 @@ def render_command_center(issue_week, city_choice: str, is_bn: bool, data_end) -
                    "কমান্ড সেন্টার ডেটা শেষ হওয়ার ৪ সপ্তাহ আগ পর্যন্ত রেকর্ড করা সপ্তাহে চলে। সাইডবারে আগের তারিখ বেছে নিন।"))
         return
     city = None if city_choice not in CITIES else city_choice
+    for k, v in CC_DEFAULTS.items():   # defaults live in session state, so the preset buttons can change them
+        st.session_state.setdefault(k, v)
+
+    _guide(is_bn)
 
     # ---- controls (R1/R2/R3 scarcity sliders)
     with st.container(border=True):
+        st.markdown("#### ⚙️ " + _t(is_bn, "Scenario settings", "পরিস্থিতি ঠিক করুন"))
+        st.markdown('<div class="cc-group">⚡ ' + _t(is_bn, "Quick scenarios — one click", "দ্রুত পরিস্থিতি — এক ক্লিকে") + "</div>", unsafe_allow_html=True)
+        p = st.columns(4)
+        for col, (name, en, bn) in zip(p, [("reset", "↺ Default", "↺ ডিফল্ট"), ("full", "✅ Full stock", "✅ পূর্ণ মজুদ"),
+                                           ("short", "⚠️ Severe shortage", "⚠️ তীব্র ঘাটতি"), ("surge", "🏥 Open surge beds", "🏥 বাড়তি শয্যা")]):
+            col.button(_t(is_bn, en, bn), key=f"cc_preset_{name}", on_click=_apply_preset, args=(name,), width="stretch",
+                       help=_t(is_bn, PRESET_HELP[name][0], PRESET_HELP[name][1]))
+
+        st.markdown('<div class="cc-group">📦 ' + _t(is_bn, "Forecast & supply", "পূর্বাভাস ও মজুদ") + "</div>", unsafe_allow_html=True)
         c1, c2, c3, c4 = st.columns(4)
-        h = c1.radio(_t(is_bn, "Lead time", "আগাম সময়"), HORIZONS, index=1, horizontal=True, key="cc_h",
-                     format_func=lambda x: _t(is_bn, f"+{x} wk", f"+{notify.num(x, 'bn')} সপ্তাহ"))
-        stock = c2.slider(_t(is_bn, "Available regional stock (%)", "আঞ্চলিক মজুদ (%)"), 30, 100, 60, 5, key="cc_stock")
-        buffer = c3.slider(_t(is_bn, "Safety buffer (%)", "নিরাপত্তা বাফার (%)"), 0, 30, 0, 5, key="cc_buffer",
+        h = c1.radio(_t(is_bn, "Lead time", "আগাম সময়"), HORIZONS, horizontal=True, key="cc_h",
+                     format_func=lambda x: _t(is_bn, f"+{x} wk", f"+{notify.num(x, 'bn')} সপ্তাহ"),
+                     help=_t(is_bn, "How many weeks ahead to plan for.", "কত সপ্তাহ আগের জন্য পরিকল্পনা।"))
+        stock = c2.slider(_t(is_bn, "Available regional stock (%)", "আঞ্চলিক মজুদ (%)"), 30, 100, step=5, key="cc_stock",
+                          help=_t(is_bn, "Share of the needed saline and test kits that is actually in store.",
+                                  "প্রয়োজনীয় স্যালাইন ও কিটের কত ভাগ আসলে মজুদে আছে।"))
+        buffer = c3.slider(_t(is_bn, "Safety buffer (%)", "নিরাপত্তা বাফার (%)"), 0, 30, step=5, key="cc_buffer",
                            help=_t(is_bn, "Raises required stock only — a stress test.", "শুধু প্রয়োজন বাড়ায় — স্ট্রেস টেস্ট।"))
-        crews = c4.slider(_t(is_bn, "Total spraying crews", "মোট স্প্রে টিম"), 0, 30, 8, 1, key="cc_crews")
-        d1, d2, d3, d4 = st.columns(4)
-        eff = d1.slider(_t(is_bn, "Crew efficacy (%)", "টিমের কার্যকারিতা (%)"), 10, 60, 30, 5, key="cc_eff",
-                        help=_t(is_bn, "Breeding-site reduction per crew (assumption).", "প্রতি টিমে প্রজনন স্থান কমে (অনুমান)।"))
-        reserve = d2.radio(_t(is_bn, "Reserve beds at receivers", "গ্রহণকারী ওয়ার্ডে খালি শয্যা"), (0, 1), horizontal=True, key="cc_reserve")
-        with d3.popover(_t(is_bn, "Per-resource stock override", "আলাদা সম্পদের মজুদ")):
+        with c4.popover("🎛️ " + _t(is_bn, "Separate saline / kit stock", "আলাদা স্যালাইন / কিট মজুদ"), width="stretch"):
             ov_on = st.toggle(_t(is_bn, "Use separate stock levels", "আলাদা মজুদ ব্যবহার"), key="cc_ov_on")
             ov_s = st.slider(_t(is_bn, "Saline stock (%)", "স্যালাইন মজুদ (%)"), 30, 100, stock, 5, key="cc_ov_s", disabled=not ov_on)
             ov_k = st.slider(_t(is_bn, "Kit stock (%)", "কিট মজুদ (%)"), 30, 100, stock, 5, key="cc_ov_k", disabled=not ov_on)
         overrides = {"saline": ov_s, "kits": ov_k} if ov_on else {}
-        cap_pct = d4.slider(_t(is_bn, "Bed capacity (% of ward P90)", "শয্যা সক্ষমতা (ওয়ার্ড P90-এর %)"), 50, 200, 100, 10, key="cc_cap",
+        if ov_on:
+            c4.caption("✓ " + _t(is_bn, f"Saline {ov_s}% · Kits {ov_k}%", f"স্যালাইন {ov_s}% · কিট {ov_k}%"))
+
+        st.markdown('<div class="cc-group">🏥 ' + _t(is_bn, "Beds & spraying crews", "শয্যা ও স্প্রে টিম") + "</div>", unsafe_allow_html=True)
+        d1, d2, d3, d4 = st.columns(4)
+        cap_pct = d1.slider(_t(is_bn, "Bed capacity (% of ward P90)", "শয্যা সক্ষমতা (ওয়ার্ড P90-এর %)"), 50, 200, step=10, key="cc_cap",
                             help=_t(is_bn, "100% = each ward's 2016–2023 P90 weekly bed need. Raise it to model surge beds opened.",
                                     "১০০% = প্রতিটি ওয়ার্ডের ২০১৬–২০২৩ সালের P90 সাপ্তাহিক শয্যা চাহিদা। অতিরিক্ত শয্যা খুললে বাড়ান।"))
+        reserve = d2.radio(_t(is_bn, "Reserve beds at receivers", "গ্রহণকারী ওয়ার্ডে খালি শয্যা"), (0, 1), horizontal=True, key="cc_reserve",
+                           help=_t(is_bn, "Beds a receiving ward keeps free for its own patients.", "গ্রহণকারী ওয়ার্ড নিজের রোগীর জন্য যত শয্যা খালি রাখে।"))
+        crews = d3.slider(_t(is_bn, "Total spraying crews", "মোট স্প্রে টিম"), 0, 30, step=1, key="cc_crews")
+        eff = d4.slider(_t(is_bn, "Crew efficacy (%)", "টিমের কার্যকারিতা (%)"), 10, 60, step=5, key="cc_eff",
+                        help=_t(is_bn, "Breeding-site reduction per crew (assumption).", "প্রতি টিমে প্রজনন স্থান কমে (অনুমান)।"))
         offline = is_offline()
 
     issue = str(pd.Timestamp(issue_week).date())
@@ -399,14 +460,24 @@ def render_command_center(issue_week, city_choice: str, is_bn: bool, data_end) -
                     _t(is_bn, "③ Vector-control simulator", "③ মশক নিধন সিমুলেটর"), _t(is_bn, "④ Dispatch notices", "④ নির্দেশনা বার্তা"),
                     _t(is_bn, "⑤ Offline & system", "⑤ অফলাইন ও সিস্টেম"), _t(is_bn, "⑥ Officer portal (login · SMS queue · admin)", "⑥ কর্মকর্তা পোর্টাল (লগইন · এসএমএস কিউ · অ্যাডমিন)")])
     with tabs[0]:
+        _intro(is_bn, "Who gets how much saline and how many test kits. Use the buttons to show only the wards that need attention.",
+               "কোন ওয়ার্ড কত স্যালাইন ও টেস্ট কিট পাবে। শুধু জরুরি ওয়ার্ড দেখতে নিচের বোতাম ব্যবহার করুন।")
         _allocation(wards, city, is_bn, issue, stock, buffer, crews, eff, reserve, overrides, offline)
     with tabs[1]:
+        _intro(is_bn, "Which wards run out of beds, and where their patients are sent inside the same city.",
+               "কোন ওয়ার্ডে শয্যা কম পড়ছে, আর রোগীদের একই শহরের কোন ওয়ার্ডে পাঠানো হচ্ছে।")
         _routing(wards, transfers, cities, is_bn)
     with tabs[2]:
+        _intro(is_bn, "How many cases the spraying crews prevent. Let the app place crews, or choose the wards yourself.",
+               "স্প্রে টিম কতজন রোগী ঠেকাতে পারে। অ্যাপকে টিম বসাতে দিন, অথবা নিজে ওয়ার্ড বেছে নিন।")
         _simulator(wards, issue_week, crews, eff, kind, is_bn)
     with tabs[3]:
+        _intro(is_bn, "Pick a ward and who it is for, check the message, then press Download. The big button saves every notice at once.",
+               "ওয়ার্ড ও প্রাপক বাছুন, বার্তা দেখে নিন, তারপর ডাউনলোড চাপুন। বড় বোতামে সব বার্তা একসাথে নামবে।")
         _dispatch(wards, transfers, cities, ctx, is_bn)
     with tabs[4]:
+        _intro(is_bn, "What the app falls back to without internet, and live self-checks of the notices.",
+               "ইন্টারনেট না থাকলে অ্যাপ কী ব্যবহার করে, আর বার্তাগুলোর তাৎক্ষণিক যাচাই।")
         _system(wards, transfers, cities, ctx, source, kind, offline, is_bn)
     with tabs[5]:
         render_outbox(wards, transfers, cities, ctx, is_bn)
@@ -670,7 +741,8 @@ def _dispatch(wards, transfers, cities, ctx, is_bn):
                           f"{notify.city_name(w['city'], 'bn')}-এর জন্য জরুরি বার্তা লাগবে না: কোনো কোড ব্ল্যাক নেই এবং শহরের শয্যা শেষ হয়নি।"))
         else:
             st.code(txt, language=None, wrap_lines=True)
-            st.download_button(_t(is_bn, "Download", "ডাউনলোড"), txt.encode("utf-8"), f"{aud}_{w['city'].replace(' ', '_')}.txt", key="cc_d_dl_city")
+            st.download_button(_t(is_bn, "Download this message", "এই বার্তা ডাউনলোড"), txt.encode("utf-8"), f"{aud}_{w['city'].replace(' ', '_')}.txt",
+                               key="cc_d_dl_city", icon=":material/download:")
     else:
         fmt = c4.radio(_t(is_bn, "Format", "ধরন"), ["sms", "wa", "brief"], horizontal=True, key="cc_d_fmt",
                        format_func=lambda x: {"sms": "SMS", "wa": "WhatsApp", "brief": _t(is_bn, "Brief", "ব্রিফ")}[x])
@@ -692,12 +764,15 @@ def _dispatch(wards, transfers, cities, ctx, is_bn):
             st.caption(_t(is_bn, "Open the downloaded HTML and press Ctrl+P → Save as PDF (Bangla renders with the system font, offline).",
                           "ডাউনলোড করা HTML খুলে Ctrl+P → Save as PDF চাপুন (বাংলা সিস্টেম ফন্টে, অফলাইনে আসে)।"))
             fname = f"{ward_id}_{'health_centre' if aud == 'hcm' else 'commissioner'}_brief.html"
-        st.download_button(_t(is_bn, "Download", "ডাউনলোড"), payload.encode("utf-8"), fname, key="cc_d_dl")
+        st.download_button(_t(is_bn, "Download this message", "এই বার্তা ডাউনলোড"), payload.encode("utf-8"), fname, key="cc_d_dl",
+                           icon=":material/download:")
     st.divider()
     files = notify.export_files(wards, cities, transfers, ctx)
-    st.download_button("⬇ " + _t(is_bn, f"Download all notices (ZIP, {len(files)} files)", f"সব বার্তা ডাউনলোড (ZIP, {len(files)}টি ফাইল)"),
+    st.download_button(_t(is_bn, f"Download all notices (ZIP, {len(files)} files)", f"সব বার্তা ডাউনলোড (ZIP, {len(files)}টি ফাইল)"),
                        notify.zip_bytes(files), f"alertahead_dispatch_{ctx.target:%Y%m%d}_h{ctx.horizon}.zip", "application/zip",
-                       type="primary", key="cc_d_zip")
+                       type="primary", key="cc_d_zip", icon=":material/folder_zip:", width="stretch")
+    st.caption(_t(is_bn, "One ZIP with the SMS, WhatsApp and printable brief for every ward, plus the city summaries.",
+                  "একটি ZIP-এ প্রতিটি ওয়ার্ডের এসএমএস, হোয়াটসঅ্যাপ ও প্রিন্টযোগ্য ব্রিফ, সঙ্গে শহরের সারসংক্ষেপ।"))
 
 
 # ------------------------------------------------------------------ ⑤ offline & system

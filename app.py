@@ -270,39 +270,222 @@ st.markdown(
         border-radius: 14px;
         box-shadow: 0 4px 12px rgba(15, 76, 92, 0.04);
     }}
-    div[data-testid="stMetricLabel"] p {{
+    [data-testid="stMetricLabel"] p {{
         color: #4D6670 !important;
         font-weight: 600 !important;
     }}
     div[data-testid="stMetricValue"] {{
         color: #0B252E !important;
         font-weight: 800 !important;
+        font-size: clamp(1.35rem, 2.1vw, 2.1rem) !important;
+    }}
+    /* Never cut a KPI value or label to "6..." on narrower screens: let it wrap instead */
+    div[data-testid="stMetricValue"] > div, [data-testid="stMetricLabel"] p, [data-testid="stMetricLabel"] > div,
+    [data-testid="stMetricLabel"] [data-testid="stMarkdownContainer"],
+    button[data-testid^="stBaseButton"] [data-testid="stMarkdownContainer"], button[data-testid^="stBaseButton"] p,
+    button[data-testid="stPopoverButton"] [data-testid="stMarkdownContainer"], button[data-testid="stPopoverButton"] p {{
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
     }}
 
-    /* Tabs */
-    button[data-baseweb="tab"] {{
-        color: #4D6670 !important;
-        font-weight: 700 !important;
+    /* Tabs: drawn as clear pill buttons, the open one filled, so it is obvious what can be clicked.
+       Streamlit 1.67 renders tabs as div[data-testid="stTab"] inside a role=tablist. */
+    div[data-testid="stTabs"] [role="tablist"] {{
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+        overflow: visible !important;
+        padding: 2px 0 8px 0;
+        border-bottom: none !important;
+        box-shadow: none !important;
     }}
-    button[data-baseweb="tab"][aria-selected="true"] {{
+    div[data-testid="stTab"] {{
+        background-color: #FFFFFF !important;
+        border: 1.5px solid #B8CFD3 !important;
+        border-radius: 10px !important;
+        padding: 7px 14px !important;
+        min-height: 42px;
         color: #0F4C5C !important;
-        border-bottom-color: #0F4C5C !important;
+        cursor: pointer;
+        transition: background-color .15s, border-color .15s;
+    }}
+    div[data-testid="stTab"]::after, div[data-testid="stTab"]::before {{
+        display: none !important;
+    }}
+    div[data-testid="stTab"] p {{
+        font-size: 0.98rem !important;
+        font-weight: 700 !important;
+        color: inherit !important;
+    }}
+    div[data-testid="stTab"]:hover {{
+        background-color: #E6F1F2 !important;
+        border-color: #246A73 !important;
+    }}
+    div[data-testid="stTab"][aria-selected="true"] {{
+        background-color: #0F4C5C !important;
+        border-color: #0F4C5C !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 10px -4px rgba(15, 76, 92, 0.55) !important;
+    }}
+    div[data-testid="stTab"][aria-selected="true"] p {{
+        color: #FFFFFF !important;
+    }}
+    div[data-testid="stTab"]:focus-visible {{
+        outline: 3px solid #E8A33D !important;
+        outline-offset: 2px !important;
     }}
 
-    /* Download / Primary buttons */
-    .stDownloadButton > button,
-    .stButton > button {{
-        background-color: #0F4C5C !important;
-        color: #FFFFFF !important;
-        border: none !important;
+    /* Buttons. Primary = solid teal (the main action); secondary = white with a teal outline.
+       Both are big enough to hit easily and keep a visible keyboard focus ring. */
+    .stButton > button, .stDownloadButton > button, .stFormSubmitButton > button,
+    button[data-testid="stPopoverButton"] {{
+        min-height: 44px;
         border-radius: 10px !important;
         font-weight: 700 !important;
-        padding: 0.5rem 1.1rem !important;
+        font-size: 0.98rem !important;
+        padding: 0.5rem 1.15rem !important;
+        transition: background-color .15s, box-shadow .15s, transform .05s;
     }}
-    .stDownloadButton > button:hover,
-    .stButton > button:hover {{
-        background-color: #196477 !important;
+    button[data-testid="stBaseButton-primary"], button[data-testid$="FormSubmit"] {{
+        background-color: #0F4C5C !important;
+        border: 2px solid #0F4C5C !important;
         color: #FFFFFF !important;
+        box-shadow: 0 6px 14px -6px rgba(15, 76, 92, 0.6);
+    }}
+    button[data-testid="stBaseButton-primary"]:hover, button[data-testid$="FormSubmit"]:hover {{
+        background-color: #196477 !important;
+        border-color: #196477 !important;
+    }}
+    button[data-testid="stBaseButton-secondary"], button[data-testid="stPopoverButton"] {{
+        background-color: #FFFFFF !important;
+        border: 2px solid #246A73 !important;
+        color: #0F4C5C !important;
+    }}
+    button[data-testid="stBaseButton-secondary"]:hover, button[data-testid="stPopoverButton"]:hover {{
+        background-color: #E6F1F2 !important;
+        border-color: #0F4C5C !important;
+    }}
+    button[data-testid="stBaseButton-primary"] p, button[data-testid="stBaseButton-secondary"] p, button[data-testid$="FormSubmit"] p, button[data-testid="stPopoverButton"] p {{
+        color: inherit !important;
+        font-weight: 700 !important;
+    }}
+    a[data-testid^="stBaseLinkButton"] {{
+        min-height: 44px;
+        border-radius: 10px !important;
+        background-color: #FFFFFF !important;
+        border: 2px solid #246A73 !important;
+        color: #0F4C5C !important;
+        font-weight: 700 !important;
+    }}
+    a[data-testid^="stBaseLinkButton"]:hover {{
+        background-color: #E6F1F2 !important;
+    }}
+    a[data-testid^="stBaseLinkButton"] p {{
+        color: inherit !important;
+        font-weight: 700 !important;
+    }}
+    button[data-testid^="stBaseButton"]:disabled {{
+        background-color: #EEF2F2 !important;
+        border-color: #D2DCDD !important;
+        color: #8A9DA3 !important;
+        box-shadow: none !important;
+    }}
+    .stButton > button:active, .stDownloadButton > button:active {{
+        transform: translateY(1px);
+    }}
+    button:focus-visible, [role="radio"]:focus-visible {{
+        outline: 3px solid #E8A33D !important;
+        outline-offset: 2px !important;
+    }}
+
+    /* Segmented controls / pills (e.g. the table filter): outlined, the chosen one filled.
+       Streamlit 1.67 renders them as button[role=radio] inside div[data-testid="stButtonGroup"]. */
+    div[data-testid="stButtonGroup"] button {{
+        background-color: #FFFFFF !important;
+        border: 1.5px solid #B8CFD3 !important;
+        color: #0F4C5C !important;
+        font-weight: 700 !important;
+        min-height: 38px;
+    }}
+    div[data-testid="stButtonGroup"] button:hover {{
+        background-color: #E6F1F2 !important;
+        border-color: #246A73 !important;
+    }}
+    div[data-testid="stButtonGroup"] button[aria-checked="true"] {{
+        background-color: #0F4C5C !important;
+        border-color: #0F4C5C !important;
+        color: #FFFFFF !important;
+    }}
+    div[data-testid="stButtonGroup"] button p {{
+        color: inherit !important;
+        font-weight: 700 !important;
+    }}
+
+    /* Widget labels: darker and bolder so every control is easy to find */
+    div[data-testid="stWidgetLabel"] p {{
+        color: #0E2B35 !important;
+        font-weight: 650 !important;
+        font-size: 0.93rem !important;
+    }}
+
+    /* Expanders read as clickable panels */
+    div[data-testid="stExpander"] details {{
+        border: 1.5px solid #B8CFD3 !important;
+        border-radius: 12px !important;
+        background-color: #FFFFFF;
+    }}
+    div[data-testid="stExpander"] summary {{
+        font-weight: 700 !important;
+        color: #0F4C5C !important;
+    }}
+    div[data-testid="stExpander"] summary:hover {{
+        background-color: #E6F1F2 !important;
+    }}
+
+    /* Command Center helpers */
+    .cc-steps {{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 10px;
+        margin: 2px 0 12px 0;
+    }}
+    .cc-step {{
+        background: #FFFFFF;
+        border: 1px solid #D2E1E3;
+        border-left: 5px solid #246A73;
+        border-radius: 10px;
+        padding: 9px 12px;
+        font-size: 0.9rem;
+        color: #16323B;
+        line-height: 1.4;
+    }}
+    .cc-step b {{ color: #0F4C5C; }}
+    .cc-num {{
+        display: inline-block;
+        width: 22px; height: 22px; line-height: 22px;
+        text-align: center;
+        border-radius: 50%;
+        background: #0F4C5C;
+        color: #FFFFFF !important;
+        font-weight: 800;
+        font-size: 0.8rem;
+        margin-right: 6px;
+    }}
+    .cc-intro {{
+        background: #EDF4F4;
+        border-radius: 10px;
+        padding: 8px 12px;
+        margin: 4px 0 10px 0;
+        font-size: 0.9rem;
+        color: #16323B;
+    }}
+    .cc-group {{
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: #246A73;
+        margin: 2px 0 -4px 0;
     }}
 
     @media (max-width: 768px) {{

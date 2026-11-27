@@ -149,11 +149,14 @@ def _card(m, store: db.Store, statuses: dict, me: dict, phones: dict, is_bn: boo
                 st.code(m.sms_bn, language=None, wrap_lines=True)
             st.code(m.whatsapp, language=None, wrap_lines=True)
         c1, c2, c3 = st.columns(3)
-        c1.link_button("📱 " + _t(is_bn, "Open in SMS app", "এসএমএস অ্যাপে খুলুন"), ob.sms_link(m.sms_en, phone), key=f"op_sms_{m.msg_id}")
-        if c2.button("✅ " + _t(is_bn, "Mark sent", "পাঠানো হয়েছে"), key=f"op_sent_{m.msg_id}", disabled=s != "queued"):
+        c1.link_button("📱 " + _t(is_bn, "Open in SMS app", "এসএমএস অ্যাপে খুলুন"), ob.sms_link(m.sms_en, phone), key=f"op_sms_{m.msg_id}",
+                       width="stretch")
+        if c2.button("✅ " + _t(is_bn, "Mark sent", "পাঠানো হয়েছে"), key=f"op_sent_{m.msg_id}", disabled=s != "queued",
+                      type="primary", width="stretch"):
             store.set_status(m.msg_id, "sent", me["username"])
             st.rerun()
-        if c3.button("📩 " + _t(is_bn, "Centre confirmed", "সেন্টার নিশ্চিত করেছে"), key=f"op_ack_{m.msg_id}", disabled=s == "ack"):
+        if c3.button("📩 " + _t(is_bn, "Centre confirmed", "সেন্টার নিশ্চিত করেছে"), key=f"op_ack_{m.msg_id}", disabled=s == "ack",
+                      width="stretch"):
             store.set_status(m.msg_id, "ack", me["username"])
             st.rerun()
 
@@ -274,8 +277,9 @@ def _admin_panel(queue: pd.DataFrame, store: db.Store, me: dict, wards_map: dict
     with t3:
         log = store.sms_log()
         st.dataframe(log, hide_index=True, width="stretch")
-        st.download_button("⬇ " + _t(is_bn, "Download SMS queue (CSV)", "এসএমএস কিউ ডাউনলোড (CSV)"),
-                           ob.queue_files(queue)["outbox/queue.csv"].encode("utf-8"), "sms_queue.csv", "text/csv", key="op_dl")
+        st.download_button(_t(is_bn, "Download SMS queue (CSV)", "এসএমএস কিউ ডাউনলোড (CSV)"),
+                           ob.queue_files(queue)["outbox/queue.csv"].encode("utf-8"), "sms_queue.csv", "text/csv", key="op_dl",
+                           icon=":material/download:")
     with t4:
         st.dataframe(store.audit(), hide_index=True, width="stretch")
     st.caption(_t(is_bn, f"Database: {store.path.name} (SQLite, local, offline). On Streamlit Cloud it resets when the app restarts.",
