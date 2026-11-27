@@ -34,7 +34,10 @@ def _secret(name: str) -> str | None:
         v = st.secrets.get(name)
     except Exception:   # no secrets.toml -> demo mode
         v = None
-    return v or os.environ.get(f"ALERTAHEAD_{name}")
+    v = v if v is not None else os.environ.get(f"ALERTAHEAD_{name}")
+    # Always text: an unquoted TOML value made only of digits is read as a number, which would otherwise break hashing.
+    v = str(v).strip() if v is not None else ""
+    return v or None
 
 
 @st.cache_resource

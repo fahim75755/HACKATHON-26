@@ -269,8 +269,12 @@ class PortalUITests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.env = mock.patch.dict(os.environ, {"ALERTAHEAD_DB": str(Path(self.tmp.name) / "ui.db")})
         self.env.start()
+        # Demo mode regardless of the developer's own .streamlit/secrets.toml (ADMIN_USER / ADMIN_PASSWORD)
+        self.secrets = mock.patch("dengue.ui_outbox._secret", return_value=None)
+        self.secrets.start()
 
     def tearDown(self):
+        self.secrets.stop()
         self.env.stop()
         self.tmp.cleanup()
 
