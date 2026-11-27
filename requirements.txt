@@ -3,8 +3,9 @@ pandas>=2.2.0
 numpy>=2.0.0
 pyarrow>=18.0.0
 openpyxl>=3.1.0
-lightgbm>=4.5.0
+lightgbm>=4.6.0  # model.py uses fit(eval_X=..., eval_y=...)
 scikit-learn>=1.6.0
+scipy>=1.11.0  # routing.py: scipy.optimize.milp (integer transfers)
 statsmodels>=0.14.0
 joblib>=1.4.0
 streamlit>=1.45.0

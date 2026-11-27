@@ -1,0 +1,4 @@
+city,from_ward,to_ward,patients,km
+Dhaka North,DNCC_Ward_07,DNCC_Ward_11,1,2.37
+Dhaka North,DNCC_Ward_12,DNCC_Ward_16,1,2.45
+Dhaka South,DSCC_Ward_06,DSCC_Ward_10,1,1.32

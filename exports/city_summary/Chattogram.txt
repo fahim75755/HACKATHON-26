@@ -1,0 +1,22 @@
+অ্যালার্টঅ্যাহেড · শহরের সারসংক্ষেপ · চট্টগ্রাম
+২১ জুলাই ২০২৫ সপ্তাহ (+৩ সপ্তাহ) · মজুদ ৬০% · টিম ৮
+
+আনুমানিক রোগী: ৮৭ · উচ্চ/চরম ওয়ার্ড: ৩
+স্যালাইন: ৩০৮টির মধ্যে ১৮৫ · কিট: ১৫২টির মধ্যে ৯১
+শয্যা: ২৫ প্রয়োজন / ৩০ সক্ষমতা (৮৩%) · স্থানান্তর ০ · বাকি ০
+লাল সতর্কতার ওয়ার্ড: CCC_Ward_01, CCC_Ward_03, CCC_Ward_07
+কোড ব্ল্যাক ওয়ার্ড: নেই
+স্থানান্তর:
+  নেই
+
+— English —
+AlertAhead · City summary · Chattogram
+Week of 21 Jul 2025 (+3 weeks) · stock 60% · crews 8
+
+Expected cases: 87 · High/Critical wards: 3
+Saline: 185 of 308 bags · Kits: 91 of 152
+Beds: 25 needed / 30 capacity (83%) · routed 0 · unmet 0
+Red alert wards: CCC_Ward_01, CCC_Ward_03, CCC_Ward_07
+CODE BLACK wards: none
+Transfers:
+  none

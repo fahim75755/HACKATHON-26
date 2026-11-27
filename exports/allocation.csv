@@ -1,0 +1,61 @@
+ward_id,city,tier,pred,saline_req,saline_alloc,kits_req,kits_alloc,beds_req,bed_cap,sent,received,unmet,crews,prevented
+CCC_Ward_01,Chattogram,High,11.902,45,43,22,21,4,4,0,0,0,1,18.596
+CCC_Ward_02,Chattogram,Medium,6.532,25,8,12,4,2,2,0,0,0,0,0.0
+CCC_Ward_03,Chattogram,High,13.283,48,46,24,23,4,5,0,0,0,1,19.846
+CCC_Ward_04,Chattogram,Medium,8.346,31,13,16,7,2,3,0,0,0,0,0.0
+CCC_Ward_05,Chattogram,Medium,5.775,23,8,12,4,2,2,0,0,0,0,0.0
+CCC_Ward_06,Chattogram,Medium,8.208,29,11,14,5,2,3,0,0,0,0,0.0
+CCC_Ward_07,Chattogram,High,11.705,39,30,19,15,3,4,0,0,0,0,0.0
+CCC_Ward_08,Chattogram,Medium,8.389,29,11,14,5,2,3,0,0,0,0,0.0
+CCC_Ward_09,Chattogram,Medium,5.687,14,5,7,2,2,2,0,0,0,0,0.0
+CCC_Ward_10,Chattogram,Medium,6.748,25,10,12,5,2,2,0,0,0,0,0.0
+DNCC_Ward_01,Dhaka North,High,10.542,37,25,18,12,3,3,0,0,0,0,0.0
+DNCC_Ward_02,Dhaka North,High,10.168,35,27,17,13,3,3,0,0,0,0,0.0
+DNCC_Ward_03,Dhaka North,Medium,8.86,32,9,16,5,3,3,0,0,0,0,0.0
+DNCC_Ward_04,Dhaka North,Medium,5.45,22,9,11,4,2,2,0,0,0,0,0.0
+DNCC_Ward_05,Dhaka North,High,9.283,34,29,17,15,3,3,0,0,0,0,0.0
+DNCC_Ward_06,Dhaka North,Medium,6.51,24,7,12,4,2,2,0,0,0,0,0.0
+DNCC_Ward_07,Dhaka North,High,9.896,33,23,16,11,3,2,1,0,0,0,0.0
+DNCC_Ward_08,Dhaka North,Medium,7.104,26,8,13,4,2,2,0,0,0,0,0.0
+DNCC_Ward_09,Dhaka North,High,11.162,40,29,20,14,3,3,0,0,0,0,0.0
+DNCC_Ward_10,Dhaka North,High,12.176,41,30,20,15,4,3,0,0,1,0,0.0
+DNCC_Ward_11,Dhaka North,Medium,8.407,29,11,14,5,2,3,0,1,0,0,0.0
+DNCC_Ward_12,Dhaka North,High,16.319,53,47,26,23,5,4,1,0,0,1,23.591
+DNCC_Ward_13,Dhaka North,Medium,5.498,14,5,7,2,2,2,0,0,0,0,0.0
+DNCC_Ward_14,Dhaka North,Medium,6.047,22,8,11,4,2,2,0,0,0,0,0.0
+DNCC_Ward_15,Dhaka North,High,9.614,35,20,17,10,3,3,0,0,0,0,0.0
+DNCC_Ward_16,Dhaka North,Medium,7.608,27,11,14,6,2,3,0,1,0,0,0.0
+DNCC_Ward_17,Dhaka North,Medium,6.445,26,10,13,5,2,2,0,0,0,0,0.0
+DNCC_Ward_18,Dhaka North,High,13.474,47,39,23,19,4,4,0,0,0,1,20.229
+DNCC_Ward_19,Dhaka North,High,11.923,41,31,20,15,4,4,0,0,0,0,0.0
+DNCC_Ward_20,Dhaka North,Medium,6.186,23,7,11,4,2,2,0,0,0,0,0.0
+DSCC_Ward_01,Dhaka South,Medium,7.324,27,10,13,5,2,2,0,0,0,0,0.0
+DSCC_Ward_02,Dhaka South,Medium,6.808,27,10,13,5,2,2,0,0,0,0,0.0
+DSCC_Ward_03,Dhaka South,High,9.673,35,23,17,11,3,4,0,0,0,0,0.0
+DSCC_Ward_04,Dhaka South,High,14.382,51,50,25,24,4,4,0,0,0,1,20.623
+DSCC_Ward_05,Dhaka South,Medium,8.417,32,10,16,5,2,3,0,0,0,0,0.0
+DSCC_Ward_06,Dhaka South,High,15.274,52,45,25,22,5,4,1,0,0,1,18.889
+DSCC_Ward_07,Dhaka South,Medium,5.292,13,5,7,3,2,2,0,0,0,0,0.0
+DSCC_Ward_08,Dhaka South,Medium,8.987,31,13,15,6,3,3,0,0,0,0,0.0
+DSCC_Ward_09,Dhaka South,Medium,6.69,25,9,13,5,2,2,0,0,0,0,0.0
+DSCC_Ward_10,Dhaka South,High,10.847,39,33,19,16,3,4,0,1,0,0,0.0
+DSCC_Ward_11,Dhaka South,Medium,7.698,31,10,15,5,2,3,0,0,0,0,0.0
+DSCC_Ward_12,Dhaka South,High,10.794,37,30,18,15,3,4,0,0,0,0,0.0
+DSCC_Ward_13,Dhaka South,High,10.616,36,29,18,14,3,3,0,0,0,0,0.0
+DSCC_Ward_14,Dhaka South,Medium,4.367,11,3,6,2,1,2,0,0,0,0,0.0
+DSCC_Ward_15,Dhaka South,Medium,7.283,28,10,14,5,2,2,0,0,0,0,0.0
+DSCC_Ward_16,Dhaka South,Medium,6.316,25,9,13,5,2,2,0,0,0,0,0.0
+DSCC_Ward_17,Dhaka South,Medium,5.626,14,5,7,2,2,2,0,0,0,0,0.0
+DSCC_Ward_18,Dhaka South,Medium,8.725,32,11,16,5,3,3,0,0,0,0,0.0
+DSCC_Ward_19,Dhaka South,High,12.551,43,36,21,18,4,4,0,0,0,0,0.0
+DSCC_Ward_20,Dhaka South,High,9.302,34,23,17,12,3,3,0,0,0,0,0.0
+GCC_Ward_01,Gazipur,High,11.366,41,30,20,15,3,3,0,0,0,0,0.0
+GCC_Ward_02,Gazipur,High,13.709,45,27,22,13,4,4,0,0,0,1,21.181
+GCC_Ward_03,Gazipur,High,13.943,45,29,22,14,4,4,0,0,0,1,19.65
+GCC_Ward_04,Gazipur,Medium,8.919,34,11,17,6,3,3,0,0,0,0,0.0
+GCC_Ward_05,Gazipur,High,9.885,35,23,17,11,3,3,0,0,0,0,0.0
+NCC_Ward_01,Narayanganj,High,10.459,38,36,19,18,3,3,0,0,0,0,0.0
+NCC_Ward_02,Narayanganj,Medium,7.072,26,8,13,4,2,2,0,0,0,0,0.0
+NCC_Ward_03,Narayanganj,Medium,7.851,27,8,14,4,2,2,0,0,0,0,0.0
+NCC_Ward_04,Narayanganj,Medium,7.116,27,12,13,6,2,2,0,0,0,0,0.0
+NCC_Ward_05,Narayanganj,High,12.78,44,33,22,17,4,4,0,0,0,0,0.0

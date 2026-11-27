@@ -233,26 +233,21 @@ def get_forecast(
 
     # 2. Live LightGBM fallback (if parquet unavailable or issue_date outside parquet)
     try:
-        from dengue import data as p1_data
-        from dengue import engine as p1_engine
-        from dengue import features as p1_features
-        from dengue import model as p1_model
+        from dengue.config import FEATURES_PATH
+        from dengue.model import load_artifacts, predict_all
 
         if MODELS_DIR.exists() and any(MODELS_DIR.glob("*.joblib")):
-            raw = p1_data.load_raw_data()
-            feat = p1_features.build_features(raw)
-            models = {
-                hz: p1_model.load_model(hz)
-                for hz in (2, 3, 4)
-                if hasattr(p1_model, "load_model")
-            }
-            if models:
-                tbl = p1_engine.predict_table(feat, models)
-                tbl["date"] = pd.to_datetime(tbl["date"])
-                mask = tbl["date"] == issue_ts
-                if mask.any() and pred_col in tbl.columns:
-                    keep = [c for c in ("ward_id", "city", pred_col, high_col, "pred_h4") if c in tbl.columns]
-                    return _normalize_forecast_frame(tbl.loc[mask, keep], h, "live_lightgbm")
+            if FEATURES_PATH.exists():
+                feat = pd.read_parquet(FEATURES_PATH)
+            else:
+                from dengue.data import load_raw_data
+                from dengue.features import build_features
+                feat = build_features(load_raw_data())
+            rows = feat[pd.to_datetime(feat["date"]) == issue_ts]
+            if not rows.empty:
+                tbl = predict_all(rows, load_artifacts())
+                keep = [c for c in ("ward_id", "city", pred_col, high_col, "pred_h4") if c in tbl.columns]
+                return _normalize_forecast_frame(tbl[keep], h, "live_lightgbm")
     except Exception:
         pass
 

@@ -1,0 +1,26 @@
+🦟 *অ্যালার্টঅ্যাহেড · নির্দেশনা বার্তা*
+📍 *DNCC_Ward_10* · ঢাকা উত্তর
+🗓 ২১ জুলাই ২০২৫ সপ্তাহ (+৩ সপ্তাহ)
+📈 আনুমানিক রোগী: *১২* · উচ্চ
+💧 স্যালাইন: ৪১টির মধ্যে ৩০ ব্যাগ (ঘাটতি ১১)
+🧪 টেস্ট কিট: ২০টির মধ্যে ১৫ (ঘাটতি ৫)
+🛏 শয্যা: ৪ প্রয়োজন · ৩ আছে
+   ⚠ ১ জন রোগী এখনো শয্যা পাননি
+🚿 স্প্রে টিম: ০
+⬛ *কোড ব্ল্যাক* — ১ জনের শয্যা নেই, স্যালাইন ঘাটতি ১১। সিভিল সার্জনকে জানানো হয়েছে।
+✅ দ্রুত ফগিং ও লার্ভিসাইড স্প্রে শুরু করুন এবং এলাকার হাসপাতাল ও ক্লিনিকগুলোকে সতর্ক করুন।
+_পরিস্থিতি 99b551 · মজুদ ৬০% · অফলাইনে তৈরি_
+
+— English —
+🦟 *AlertAhead · Dispatch notice*
+📍 *DNCC_Ward_10* · Dhaka North
+🗓 Week of 21 Jul 2025 (+3 weeks)
+📈 Expected cases: *12* · High
+💧 Saline: 30 of 41 bags (short 11)
+🧪 Test kits: 15 of 20 (short 5)
+🛏 Beds: 4 needed · 3 available
+   ⚠ 1 patient(s) still without a bed
+🚿 Spraying crews: 0
+⬛ *CODE BLACK* — no bed for 1 and saline short by 11. Escalated to the civil surgeon.
+✅ Deploy larvicide and fogging teams to this ward and alert local clinics.
+_Scenario 99b551 · stock 60% · generated offline_

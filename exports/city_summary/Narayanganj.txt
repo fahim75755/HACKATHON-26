@@ -1,0 +1,22 @@
+অ্যালার্টঅ্যাহেড · শহরের সারসংক্ষেপ · নারায়ণগঞ্জ
+২১ জুলাই ২০২৫ সপ্তাহ (+৩ সপ্তাহ) · মজুদ ৬০% · টিম ৮
+
+আনুমানিক রোগী: ৪৫ · উচ্চ/চরম ওয়ার্ড: ২
+স্যালাইন: ১৬২টির মধ্যে ৯৭ · কিট: ৮১টির মধ্যে ৪৯
+শয্যা: ১৩ প্রয়োজন / ১৩ সক্ষমতা (১০০%) · স্থানান্তর ০ · বাকি ০
+লাল সতর্কতার ওয়ার্ড: NCC_Ward_01, NCC_Ward_05
+কোড ব্ল্যাক ওয়ার্ড: নেই
+স্থানান্তর:
+  নেই
+
+— English —
+AlertAhead · City summary · Narayanganj
+Week of 21 Jul 2025 (+3 weeks) · stock 60% · crews 8
+
+Expected cases: 45 · High/Critical wards: 2
+Saline: 97 of 162 bags · Kits: 49 of 81
+Beds: 13 needed / 13 capacity (100%) · routed 0 · unmet 0
+Red alert wards: NCC_Ward_01, NCC_Ward_05
+CODE BLACK wards: none
+Transfers:
+  none

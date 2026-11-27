@@ -112,22 +112,54 @@ packages.txt           System library for LightGBM on Streamlit Community Cloud 
 ARCHITECTURE.md        Data flow, validation split, model choice, cost controls
 ```
 
+## Phase 2 (onsite): 🚑 Command Center
+
+The last tab turns the forecasts into an operations plan for ward commissioners and health-centre managers
+across all 60 wards. Everything runs locally (no internet, no LLM).
+
+| Requirement | In the app | Code |
+|---|---|---|
+| **R1 Constrained allocation** | Sliders: available regional stock 30–100 %, safety buffer, per-resource override, total spraying crews, crew efficacy. Saline / kits / beds per ward with fill bars, shortfall · red alert · CODE BLACK flags, fill-by-tier chart, +2/+3/+4-week procurement table | `dengue/resources.py` |
+| **R2 Overflow routing** | Ward bed load vs capacity (85 % surge / 100 % overflow bands), intra-city transfers (integer MILP, shortest distance), city bed load, "city pool exhausted" alerts, bed-capacity slider | `dengue/routing.py` |
+| **R3 Vector-control simulator** | Crews cut breeding-water features; the same h2/h3/h4 LightGBM models re-run → cases, beds and saline prevented at +2/+3/+4 weeks, ROI (cases prevented per crew) ranking | `dengue/simulator.py` |
+| **R4 Dispatch notices** | SMS (English 1 × GSM-7 ≤ 160, Bangla ≤ 3 parts), WhatsApp, printable brief (Bangla font embedded), city summary, civil-surgeon escalation, ZIP of everything | `dengue/notify.py`, `make_exports.py`, [`exports/`](exports/) |
+| **R5 Offline** | Sidebar **Offline mode (kill-switch)** or `ALERTAHEAD_OFFLINE=1`: weather uses the offline cache, maps drop tiles; forecast ladder parquet → live LightGBM → same week last year | `dengue/fallback.py`, `tests/test_offline.py` |
+
+* **Exact supply math:** the dataset's resource columns are a fixed rate × same-week cases. Fitted on 2016–2023
+  (saline 2.384, kits 1.158, beds 0.2955 per case), the rates reproduce 2025 exactly (3120/3120, 3119/3120, 3120/3120 rows).
+* **Demo scenario:** forecast from **30 Jun 2025**, **+3 weeks**, stock 60 %, 8 crews → 27 red-alert wards, 3 intra-city
+  transfers, Dhaka North's bed pool exhausted (1 CODE BLACK ward); High wards get 79 % of their saline vs 35 % for
+  Medium, and 8 crews prevent ≈ 163 cases over +2–4 weeks (crew efficacy 30 % is an explicit assumption).
+* **Exports:** `python make_exports.py --pdf` rewrites [`exports/`](exports/) offline (byte-identical on re-run) and prints sample briefs to PDF.
+* **Model check (accuracy first):** 12 models compared (LightGBM variants, XGBoost, CatBoost, HistGradientBoosting,
+  random forest, extra trees, Poisson GLM, ensembles), chosen on 2024 only and reported on 2025: none beat the
+  Phase-1 LightGBM by more than 2 % MAE, so the models are unchanged (details in ARCHITECTURE.md).
+
+```bash
+python -m unittest discover -s tests -v   # 65 tests incl. allocation, routing, simulator, notices, offline kill-switch
+python make_exports.py --pdf              # regenerate exports/ (needs no internet)
+```
+
 ## Team
 
 | Member | GitHub | Area |
 |---|---|---|
 | Fahim | fahim75755 | Risk prediction engine (Task 2) |
-| Omar Faruk Naim | naim2003programming | User interface (Task 4), field operations: map, team dispatch, backtest |
-| _OkIttehad_ | OkIttehad | _add area_ |
+| Omar Faruk Naim | naim2003programming | User interface (Task 4), field operations: map, team dispatch, backtest; Phase 2 backend (contract, allocation, routing) |
+| Ittehad Bin Hossain | OkIttehad | Phase 2 Command Center frontend, dispatch notices and exports, offline kill-switch, simulator integration |
 
 ## AI assistants and external APIs (disclosure)
 
 * **Claude (Anthropic), via Claude Code** - used to review the dataset, design and write the multi-horizon
   feature pipeline, training code, baselines, tests, dashboard changes and documentation.
+* **Claude (Anthropic), via Claude Code - Phase 2:** checked the onsite dataset (resource rates, bed capacity),
+  ran the model comparison, and wrote the Command Center UI, notice templates, exports script, simulator,
+  offline tests and these docs, which the team reviewed.
 * **Other AI assistants used by team members:** _team members add any other tools here (name and what it was used for)._
 * **External APIs (all free, no API key, nothing sent about patients):**
   * **Open-Meteo** weather forecast - only when an officer clicks "Fetch Live 7-Day Weather"; cached 30 minutes
     per city, 3.5 s timeout, offline backup values if it fails. Display only; forecasts never depend on it.
   * **Map tiles** from OpenStreetMap, CARTO and Esri World Imagery - loaded by the viewer's browser for the ward map.
   * **No LLM calls** at runtime. Forecasts, tiers, drivers and dispatch all run locally from the saved models.
-* **Open-source libraries:** pandas, NumPy, LightGBM, scikit-learn, statsmodels, Streamlit, Plotly, PyArrow, joblib.
+* **Open-source libraries:** pandas, NumPy, LightGBM, scikit-learn, SciPy, statsmodels, Streamlit, Plotly, PyArrow, joblib.
+* **Font:** Noto Sans Bengali (SIL Open Font License, `assets/fonts/OFL.txt`), subset to 45 KB for the printable briefs.

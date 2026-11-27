@@ -124,3 +124,95 @@ weather guardrails, field-report flags, dashboard in English and Bangla).
 * **Streamlit Community Cloud:** https://edu-hackathon-26-alert-ahead-dengue-coming.streamlit.app/ -
   redeploys automatically on every push to `main`; `packages.txt` installs `libgomp1`, which LightGBM needs.
 * **GitHub Codespaces:** `.devcontainer/` installs everything and starts the app on port 8501.
+
+## 7. Phase 2 - Command Center (R1-R5)
+
+```mermaid
+flowchart LR
+    P[(predictions.parquet)] --> F[fallback.get_forecast<br/>parquet -> live LightGBM -> last year<br/>float64 + round 3]
+    F --> C[command.run_command_center<br/>one orchestrator for app, exports, tests]
+    M[(models/lgbm_h2,h3,h4)] --> S[simulator.py<br/>breeding-water counterfactual]
+    S --> R1[resources.py<br/>water-filling supplies + ROI crews]
+    C --> R1 --> R2[routing.py<br/>intra-city MILP transfers]
+    R2 --> U[ui_command.py<br/>Command Center tab]
+    R2 --> N[notify.py<br/>SMS / WhatsApp / brief / escalation]
+    N --> U
+    N --> E[make_exports.py -> exports/]
+```
+
+### Data facts the design rests on
+* The onsite dataset is the Phase-1 data (31,320 rows, 0 mismatches in the 12 original columns) plus
+  `saline_bags_needed`, `diagnostic_kits_needed`, `hospital_beds_required`. Those are a fixed rate x same-week
+  cases: least squares on 2016-2023 gives **2.384 / 1.158 / 0.2955 per case**, and round(rate x cases) reproduces
+  2025 exactly (3120/3120, 3119/3120, 3120/3120). So the supplies come from the case forecast and its 80 % range;
+  a separate resource model would only add error.
+* There is no bed-capacity column. Capacity = each ward's **P90 weekly bed need in 2016-2023, minimum 2**
+  (2-5 beds per ward, 173 in total); the officer can scale it 50-200 % (surge beds).
+
+### R1 - constrained allocation (`dengue/resources.py`)
+* **Need** = ceil(rate x planning cases). Supplies for High/Critical wards, and wards whose P90 reaches High, plan on
+  the P90 upper range (safety stock); beds use the expected forecast, rounded like the dataset and the capacity
+  (planning beds on P90 + ceil overflowed every ward and left nowhere to route to).
+* **Stock** per city pool = stock % x base need; the safety buffer raises need only (stress test).
+* **Weight** = tier weight 1 / 2 / 4 / 8 (Low -> Critical) x (1 + density / city max density).
+* **Weighted water-filling**: fill_i = max(floor, min(1, lambda x w_i)), lambda by bisection so the pool is used
+  exactly, floor = min(25 %, half the stock share), whole units by largest remainder. Compared on 2025 with pure
+  greedy and a fixed-floor two-phase rule: same priority for Critical/High, but no ward starved and no
+  "cliffs" between wards of the same tier.
+* **Flags**: shortfall if fill < 100 %; red alert if a High/Critical ward is short; CODE BLACK if saline is short and
+  patients still have no bed after routing.
+* **Crews**: greedy on the simulator's marginal cases prevented per extra crew x (1 + density / city max); without
+  the models it falls back to predicted cases x tier weight x density (deterministic).
+
+### R2 - overflow routing (`dengue/routing.py`)
+Overflow wards send patients only to wards of the same city with headroom (capacity - reserve - need), as an
+integer MILP (`scipy.optimize.milp`) minimising total distance. Status bands: < 85 % normal, 85-100 % surge
+(Bagust et al., BMJ 1999), > 100 % overflow. If a city still has unmet patients its pool is exhausted and a
+civil-surgeon escalation is generated.
+
+### R3 - vector-control simulator (`dengue/simulator.py`)
+n crews scale the breeding-water features (rain this week and 1-3 weeks back, 4-week rain, water-logging
+index) by (1 - e)^n; the 4-week anomaly is recomputed against the ward's seasonal normal; the same h2/h3/h4
+LightGBM models are re-run. Baseline and counterfactual come from one live call, so 0 crews prevent exactly 0.
+Prevented cases are clipped >= 0 and made non-decreasing in crews (the few non-monotone model points are
+reported in the result metadata). Beds and saline prevented use the per-case rates; ROI = cases prevented per crew.
+**Assumption:** efficacy e (default 30 %) is an officer-set parameter, not learned. The models react strongly to
+rain in the monsoon (a 10 % breeding cut lowers +3-week cases by about a third on 30 Jun 2025), so the efficacy
+slider should be read as an upper-bound scenario tool.
+
+### R4 - notices (`dengue/notify.py`, `make_exports.py`)
+One template engine for the app and the exports, so numbers always match. Every notice lists predicted cases,
+allocated vs required supplies, the alert level and the assigned crews. English SMS fits one GSM-7 segment
+(<= 160 characters), Bangla SMS <= 3 Unicode parts; WhatsApp is bilingual; the printable brief embeds a 45 KB
+Noto Sans Bengali subset (OFL) so Bangla renders on any PC; no clock in any file -> byte-identical re-runs.
+
+### R5 - offline resilience
+| Task | 1st | If unavailable | Last resort |
+|---|---|---|---|
+| Forecast | predictions.parquet (dates in the data) | live LightGBM from features.parquet | same week last year (2025 MAE 1.48) |
+| Weather (display only) | Open-Meteo on click | offline cache | - |
+| Map | tile map | tile-free map (kill-switch on) | - |
+| Notices | templates (always) | - | - |
+
+The kill-switch (sidebar toggle or `ALERTAHEAD_OFFLINE=1`) skips every optional call; the connectivity check is
+lazy and cached 60 s; Streamlit telemetry is off. `tests/test_offline.py` blocks every socket and runs forecast ->
+allocation -> routing -> simulator -> notices -> export with 0 network attempts, and checks the fallback ladder
+with the parquet and the models removed.
+
+### Model check (accuracy first)
+Chosen on 2024 validation only, reported once on 2025:
+
+| Lead time | Best on 2024 | 2025 MAE | Phase-1 LightGBM | Change |
+|---|---|---|---|---|
+| +2 weeks | ensemble of top 3 | 1.090 | 1.098 | -0.7 % |
+| +3 weeks | LightGBM (tweedie) | 1.124 | 1.126 | -0.1 % |
+| +4 weeks | CatBoost (depth 8) | 1.200 | 1.219 | -1.6 % |
+
+Also tried: XGBoost, HistGradientBoosting, random forest, extra trees, Poisson GLM. No model was clearly better
+(< 2 % MAE), and the +4-week CatBoost caught fewer High/Critical weeks (47 % vs 51 %), so the Phase-1 LightGBM
+models stay - they also power the P90 range, the drivers and the simulator.
+
+### Tests
+65 automated tests: Phase 1 (31), contract and same-number online vs offline, allocation invariants, MILP routing,
+simulator (0 crews = 0, monotone, efficacy), notices (SMS limits, four required items, escalation rule,
+determinism), Command Center UI smoke (AppTest), offline kill-switch and fallback ladder.

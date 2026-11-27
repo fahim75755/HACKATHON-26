@@ -9,6 +9,7 @@ tested in parallel. Notices come from dengue/notify.py - the same engine make_ex
 from __future__ import annotations
 
 import functools
+from pathlib import Path
 import hashlib
 import json
 import math
@@ -39,6 +40,17 @@ S1, S2 = "#2a78d6", "#eb6834"                                   # categorical sl
 STATUS = {"ok": "#0ca30c", "surge": "#fab219", "over": "#d03b3b"}
 STATUS_ICON = {"ok": "✓", "surge": "!", "over": "✕"}
 OFFLINE_ENV = "ALERTAHEAD_OFFLINE"
+BANGLA_FONT = Path(__file__).resolve().parent.parent / "assets" / "fonts" / "bn-subset.woff2"
+
+
+@functools.lru_cache(maxsize=1)
+def _bangla_font_css() -> str:
+    """Embed the 45 KB Bangla subset (Noto Sans Bengali, OFL) so a downloaded brief renders Bangla on any PC, offline."""
+    if not BANGLA_FONT.exists():
+        return ""
+    import base64
+    data = base64.b64encode(BANGLA_FONT.read_bytes()).decode("ascii")
+    return f'@font-face{{font-family:"BnSubset";src:url(data:font/woff2;base64,{data}) format("woff2")}}'
 
 
 # ------------------------------------------------------------------ honest preview (used only until dengue/command.py exists)
@@ -198,7 +210,8 @@ def is_offline() -> bool:
 
 @st.cache_data(show_spinner=False, max_entries=64)
 def _run(issue: str, h: int, city: str | None, stock: int, buffer: int, crews: int, eff: float,
-         reserve: int, ov_json: str, offline: bool, cap_mult: float = 1.0):
+         reserve: int, ov_json: str, offline: bool, cap_mult: float = 1.0, engine_kind: str = ""):
+    # engine_kind is part of the cache key, so a cached preview is never served once the backend exists
     Params, run, kind = get_engine()
     extra = {"capacity_multiplier": cap_mult} if kind == "backend" else {}
     p = Params(issue_date=issue if kind == "backend" else pd.Timestamp(issue), horizon=h, city=city, stock_pct=stock, buffer_pct=buffer,
@@ -282,7 +295,7 @@ def render_command_center(issue_week, city_choice: str, is_bn: bool, data_end) -
         offline = is_offline()
 
     issue = str(pd.Timestamp(issue_week).date())
-    run_args = (stock, buffer, crews, eff / 100, reserve, json.dumps(overrides, sort_keys=True), offline, cap_pct / 100)
+    run_args = (stock, buffer, crews, eff / 100, reserve, json.dumps(overrides, sort_keys=True), offline, cap_pct / 100, get_engine()[2])
     st.session_state["_cc_run_args"] = (issue, city) + run_args
     wards, transfers, cities, alerts, source, kind = _run(issue, h, city, *run_args)
     target = pd.Timestamp(issue_week) + pd.Timedelta(weeks=h)
@@ -548,7 +561,7 @@ def _dispatch(wards, transfers, cities, ctx, is_bn):
             st.code(payload, language=None, wrap_lines=True)
             fname = f"{ward_id}_whatsapp.txt"
         else:
-            payload = notify.brief_html(w, ctx, transfers, aud, lang)
+            payload = notify.brief_html(w, ctx, transfers, aud, lang, font_face_css=_bangla_font_css())
             components.html(payload, height=640, scrolling=True)
             st.caption(_t(is_bn, "Open the downloaded HTML and press Ctrl+P → Save as PDF (Bangla renders with the system font, offline).",
                           "ডাউনলোড করা HTML খুলে Ctrl+P → Save as PDF চাপুন (বাংলা সিস্টেম ফন্টে, অফলাইনে আসে)।"))

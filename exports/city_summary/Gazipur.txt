@@ -1,0 +1,22 @@
+অ্যালার্টঅ্যাহেড · শহরের সারসংক্ষেপ · গাজীপুর
+২১ জুলাই ২০২৫ সপ্তাহ (+৩ সপ্তাহ) · মজুদ ৬০% · টিম ৮
+
+আনুমানিক রোগী: ৫৮ · উচ্চ/চরম ওয়ার্ড: ৪
+স্যালাইন: ২০০টির মধ্যে ১২০ · কিট: ৯৮টির মধ্যে ৫৯
+শয্যা: ১৭ প্রয়োজন / ১৭ সক্ষমতা (১০০%) · স্থানান্তর ০ · বাকি ০
+লাল সতর্কতার ওয়ার্ড: GCC_Ward_01, GCC_Ward_02, GCC_Ward_03, GCC_Ward_05
+কোড ব্ল্যাক ওয়ার্ড: নেই
+স্থানান্তর:
+  নেই
+
+— English —
+AlertAhead · City summary · Gazipur
+Week of 21 Jul 2025 (+3 weeks) · stock 60% · crews 8
+
+Expected cases: 58 · High/Critical wards: 4
+Saline: 120 of 200 bags · Kits: 59 of 98
+Beds: 17 needed / 17 capacity (100%) · routed 0 · unmet 0
+Red alert wards: GCC_Ward_01, GCC_Ward_02, GCC_Ward_03, GCC_Ward_05
+CODE BLACK wards: none
+Transfers:
+  none

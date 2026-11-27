@@ -1,0 +1,24 @@
+🦟 *অ্যালার্টঅ্যাহেড · নির্দেশনা বার্তা*
+📍 *GCC_Ward_05* · গাজীপুর
+🗓 ২১ জুলাই ২০২৫ সপ্তাহ (+৩ সপ্তাহ)
+📈 আনুমানিক রোগী: *১০* · উচ্চ
+💧 স্যালাইন: ৩৫টির মধ্যে ২৩ ব্যাগ (ঘাটতি ১২)
+🧪 টেস্ট কিট: ১৭টির মধ্যে ১১ (ঘাটতি ৬)
+🛏 শয্যা: ৩ প্রয়োজন · ৩ আছে
+🚿 স্প্রে টিম: ০
+🔴 *লাল সতর্কতা* — আজই আঞ্চলিক মজুদ থেকে ১২ স্যালাইন ও ৬ কিট চান।
+✅ দ্রুত ফগিং ও লার্ভিসাইড স্প্রে শুরু করুন এবং এলাকার হাসপাতাল ও ক্লিনিকগুলোকে সতর্ক করুন।
+_পরিস্থিতি 99b551 · মজুদ ৬০% · অফলাইনে তৈরি_
+
+— English —
+🦟 *AlertAhead · Dispatch notice*
+📍 *GCC_Ward_05* · Gazipur
+🗓 Week of 21 Jul 2025 (+3 weeks)
+📈 Expected cases: *10* · High
+💧 Saline: 23 of 35 bags (short 12)
+🧪 Test kits: 11 of 17 (short 6)
+🛏 Beds: 3 needed · 3 available
+🚿 Spraying crews: 0
+🔴 *RED ALERT* — request 12 saline + 6 kits from the regional store today.
+✅ Deploy larvicide and fogging teams to this ward and alert local clinics.
+_Scenario 99b551 · stock 60% · generated offline_

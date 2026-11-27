@@ -1,0 +1,24 @@
+🦟 *অ্যালার্টঅ্যাহেড · নির্দেশনা বার্তা*
+📍 *DSCC_Ward_20* · ঢাকা দক্ষিণ
+🗓 ২১ জুলাই ২০২৫ সপ্তাহ (+৩ সপ্তাহ)
+📈 আনুমানিক রোগী: *৯* · উচ্চ
+💧 স্যালাইন: ৩৪টির মধ্যে ২৩ ব্যাগ (ঘাটতি ১১)
+🧪 টেস্ট কিট: ১৭টির মধ্যে ১২ (ঘাটতি ৫)
+🛏 শয্যা: ৩ প্রয়োজন · ৩ আছে
+🚿 স্প্রে টিম: ০
+🔴 *লাল সতর্কতা* — আজই আঞ্চলিক মজুদ থেকে ১১ স্যালাইন ও ৫ কিট চান।
+✅ দ্রুত ফগিং ও লার্ভিসাইড স্প্রে শুরু করুন এবং এলাকার হাসপাতাল ও ক্লিনিকগুলোকে সতর্ক করুন।
+_পরিস্থিতি 99b551 · মজুদ ৬০% · অফলাইনে তৈরি_
+
+— English —
+🦟 *AlertAhead · Dispatch notice*
+📍 *DSCC_Ward_20* · Dhaka South
+🗓 Week of 21 Jul 2025 (+3 weeks)
+📈 Expected cases: *9* · High
+💧 Saline: 23 of 34 bags (short 11)
+🧪 Test kits: 12 of 17 (short 5)
+🛏 Beds: 3 needed · 3 available
+🚿 Spraying crews: 0
+🔴 *RED ALERT* — request 11 saline + 5 kits from the regional store today.
+✅ Deploy larvicide and fogging teams to this ward and alert local clinics.
+_Scenario 99b551 · stock 60% · generated offline_

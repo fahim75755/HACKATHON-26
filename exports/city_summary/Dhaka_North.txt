@@ -1,0 +1,24 @@
+অ্যালার্টঅ্যাহেড · শহরের সারসংক্ষেপ · ঢাকা উত্তর
+২১ জুলাই ২০২৫ সপ্তাহ (+৩ সপ্তাহ) · মজুদ ৬০% · টিম ৮
+
+আনুমানিক রোগী: ১৮৩ · উচ্চ/চরম ওয়ার্ড: ১০
+স্যালাইন: ৬৪১টির মধ্যে ৩৮৫ · কিট: ৩১৬টির মধ্যে ১৯০
+শয্যা: ৫৬ প্রয়োজন / ৫৫ সক্ষমতা (১০২%) · স্থানান্তর ২ · বাকি ১
+লাল সতর্কতার ওয়ার্ড: DNCC_Ward_01, DNCC_Ward_02, DNCC_Ward_05, DNCC_Ward_07, DNCC_Ward_09, DNCC_Ward_10, DNCC_Ward_12, DNCC_Ward_15, DNCC_Ward_18, DNCC_Ward_19
+কোড ব্ল্যাক ওয়ার্ড: DNCC_Ward_10
+স্থানান্তর:
+  DNCC_Ward_07 -> DNCC_Ward_11: ১ জন, ২.৪ কিমি
+  DNCC_Ward_12 -> DNCC_Ward_16: ১ জন, ২.৫ কিমি
+
+— English —
+AlertAhead · City summary · Dhaka North
+Week of 21 Jul 2025 (+3 weeks) · stock 60% · crews 8
+
+Expected cases: 183 · High/Critical wards: 10
+Saline: 385 of 641 bags · Kits: 190 of 316
+Beds: 56 needed / 55 capacity (102%) · routed 2 · unmet 1
+Red alert wards: DNCC_Ward_01, DNCC_Ward_02, DNCC_Ward_05, DNCC_Ward_07, DNCC_Ward_09, DNCC_Ward_10, DNCC_Ward_12, DNCC_Ward_15, DNCC_Ward_18, DNCC_Ward_19
+CODE BLACK wards: DNCC_Ward_10
+Transfers:
+  DNCC_Ward_07 -> DNCC_Ward_11: 1 patient(s), 2.4 km
+  DNCC_Ward_12 -> DNCC_Ward_16: 1 patient(s), 2.5 km

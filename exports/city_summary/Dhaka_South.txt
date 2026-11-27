@@ -1,0 +1,22 @@
+অ্যালার্টঅ্যাহেড · শহরের সারসংক্ষেপ · ঢাকা দক্ষিণ
+২১ জুলাই ২০২৫ সপ্তাহ (+৩ সপ্তাহ) · মজুদ ৬০% · টিম ৮
+
+আনুমানিক রোগী: ১৭৭ · উচ্চ/চরম ওয়ার্ড: ৮
+স্যালাইন: ৬২৩টির মধ্যে ৩৭৪ · কিট: ৩০৮টির মধ্যে ১৮৫
+শয্যা: ৫৩ প্রয়োজন / ৫৮ সক্ষমতা (৯১%) · স্থানান্তর ১ · বাকি ০
+লাল সতর্কতার ওয়ার্ড: DSCC_Ward_03, DSCC_Ward_04, DSCC_Ward_06, DSCC_Ward_10, DSCC_Ward_12, DSCC_Ward_13, DSCC_Ward_19, DSCC_Ward_20
+কোড ব্ল্যাক ওয়ার্ড: নেই
+স্থানান্তর:
+  DSCC_Ward_06 -> DSCC_Ward_10: ১ জন, ১.৩ কিমি
+
+— English —
+AlertAhead · City summary · Dhaka South
+Week of 21 Jul 2025 (+3 weeks) · stock 60% · crews 8
+
+Expected cases: 177 · High/Critical wards: 8
+Saline: 374 of 623 bags · Kits: 185 of 308
+Beds: 53 needed / 58 capacity (91%) · routed 1 · unmet 0
+Red alert wards: DSCC_Ward_03, DSCC_Ward_04, DSCC_Ward_06, DSCC_Ward_10, DSCC_Ward_12, DSCC_Ward_13, DSCC_Ward_19, DSCC_Ward_20
+CODE BLACK wards: none
+Transfers:
+  DSCC_Ward_06 -> DSCC_Ward_10: 1 patient(s), 1.3 km

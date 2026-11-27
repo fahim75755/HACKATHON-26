@@ -1,6 +1,6 @@
 """Write sample dispatch exports to exports/ (R4 + R5), fully offline.
 
-Usage:  python make_exports.py [--date 2025-06-09] [--horizon 3] [--stock 60] [--crews 8]
+Usage:  python make_exports.py [--date 2025-06-30] [--horizon 3] [--stock 60] [--crews 8] [--pdf]
 
 Uses the same engine as the app (dengue.ui_command.get_engine -> backend, or the labelled preview)
 and the same templates (dengue/notify.py), so the files always match what the app shows.
@@ -9,6 +9,7 @@ Deterministic: running it twice gives byte-identical files.
 import argparse
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 import pandas as pd
@@ -25,11 +26,12 @@ FONT = ROOT / "assets" / "fonts" / "bn-subset.woff2"
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--date", default="2025-06-09")
+    ap.add_argument("--date", default="2025-06-30")
     ap.add_argument("--horizon", type=int, default=3, choices=(2, 3, 4))
     ap.add_argument("--stock", type=int, default=60)
     ap.add_argument("--crews", type=int, default=8)
     ap.add_argument("--efficacy", type=float, default=0.30)
+    ap.add_argument("--pdf", action="store_true", help="also print 3 sample briefs to PDF with a local headless Edge/Chrome")
     args = ap.parse_args()
 
     Params, run, kind = get_engine()
@@ -38,7 +40,7 @@ def main() -> None:
                reserve_beds=0, offline=True)
     wards, transfers, cities, _alerts, source = adapt_result(run(p))
     sid = scenario_id(issue=args.date, h=args.horizon, city=None, stock=args.stock, buffer=0, crews=args.crews,
-                      eff=round(args.efficacy * 100), reserve=0, ov={})
+                      eff=round(args.efficacy * 100), reserve=0, ov={}, cap=100)
     ctx = notify.NoticeContext(target=pd.Timestamp(args.date) + pd.Timedelta(weeks=args.horizon), horizon=args.horizon,
                                stock_pct=args.stock, total_crews=args.crews, scenario=sid, source=source)
 
@@ -68,6 +70,33 @@ def main() -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8", newline="\n")
     print(f"Wrote {len(files)} files to {OUT} (engine: {kind}, scenario {sid})")
+    if args.pdf:
+        print_sample_pdfs(wards)
+
+
+BROWSERS = [r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe", r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe", "/usr/bin/chromium", "/usr/bin/google-chrome"]
+
+
+def print_sample_pdfs(wards: pd.DataFrame) -> None:
+    """Print a CODE BLACK, a red-alert and a no-shortfall ward brief to PDF (offline, local browser)."""
+    browser = next((b for b in BROWSERS if Path(b).exists()), None)
+    if browser is None:
+        print("No local Edge/Chrome found - skipped PDFs (open a brief and press Ctrl+P instead).")
+        return
+    w = wards.sort_values("ward_id")
+    picks = [w[w["code_black"]], w[w["red"] & ~w["code_black"]], w[~w["deficit"]]]
+    out_dir = OUT / "briefs_pdf"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for sub in picks:
+        if sub.empty:
+            continue
+        wid = sub.iloc[0]["ward_id"]
+        src = (OUT / "briefs" / f"{wid}_commissioner.html").resolve()
+        dst = (out_dir / f"{wid}_commissioner.pdf").resolve()
+        subprocess.run([browser, "--headless=new", "--disable-gpu", "--no-pdf-header-footer", f"--print-to-pdf={dst}", src.as_uri()],
+                       check=False, capture_output=True, timeout=120)
+        print(("PDF  " if dst.exists() else "PDF FAILED ") + str(dst.relative_to(ROOT)))
 
 
 if __name__ == "__main__":
