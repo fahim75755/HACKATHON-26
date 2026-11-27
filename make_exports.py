@@ -16,7 +16,7 @@ import pandas as pd
 os.environ.setdefault("ALERTAHEAD_OFFLINE", "1")   # exports never touch the network
 
 from dengue import notify  # noqa: E402
-from dengue.ui_command import TRANSFER_COLS, get_engine, scenario_id  # noqa: E402
+from dengue.ui_command import adapt_result, get_engine, scenario_id  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "exports"
@@ -33,14 +33,14 @@ def main() -> None:
     args = ap.parse_args()
 
     Params, run, kind = get_engine()
-    p = Params(issue_date=pd.Timestamp(args.date), horizon=args.horizon, city=None, stock_pct=args.stock, buffer_pct=0,
-               overrides=None, total_crews=args.crews, efficacy=args.efficacy, reserve_beds=0, offline=True)
-    r = run(p)
-    transfers = r.transfers if r.transfers is not None else pd.DataFrame(columns=TRANSFER_COLS)
+    p = Params(issue_date=args.date if kind == "backend" else pd.Timestamp(args.date), horizon=args.horizon, city=None,
+               stock_pct=args.stock, buffer_pct=0, overrides=None, total_crews=args.crews, efficacy=args.efficacy,
+               reserve_beds=0, offline=True)
+    wards, transfers, cities, _alerts, source = adapt_result(run(p))
     sid = scenario_id(issue=args.date, h=args.horizon, city=None, stock=args.stock, buffer=0, crews=args.crews,
                       eff=round(args.efficacy * 100), reserve=0, ov={})
     ctx = notify.NoticeContext(target=pd.Timestamp(args.date) + pd.Timedelta(weeks=args.horizon), horizon=args.horizon,
-                               stock_pct=args.stock, total_crews=args.crews, scenario=sid, source=str(getattr(r, "source", kind)))
+                               stock_pct=args.stock, total_crews=args.crews, scenario=sid, source=source)
 
     font_url = None
     if OUT.exists():
@@ -49,7 +49,7 @@ def main() -> None:
         (OUT / "fonts").mkdir(parents=True, exist_ok=True)
         shutil.copy2(FONT, OUT / "fonts" / FONT.name)
         font_url = "../fonts/" + FONT.name
-    files = notify.export_files(r.wards, r.cities, transfers, ctx, font_rel_url=font_url)
+    files = notify.export_files(wards, cities, transfers, ctx, font_rel_url=font_url)
     files["README.md"] = (
         "# AlertAhead dispatch exports\n\n"
         f"Scenario `{sid}` · issue week {args.date} · +{args.horizon} weeks (target {ctx.target:%Y-%m-%d}) · "

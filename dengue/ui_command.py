@@ -121,6 +121,68 @@ def preview_command_center(params) -> PreviewResult:
     return PreviewResult(wards=wards, transfers=pd.DataFrame(columns=TRANSFER_COLS), cities=cities, params=params)
 
 
+BACKEND_WARD_MAP = {  # backend contract (dengue/phase2_config.WARD_COLS) -> names this UI and notify.py read
+    "saline_required": "saline_req", "saline_allocated": "saline_alloc", "kits_required": "kits_req",
+    "kits_allocated": "kits_alloc", "beds_required": "beds_req", "bed_capacity": "bed_cap", "crews_assigned": "crews",
+    "cases_prevented": "prevented", "high_pred": "p90", "deficit_flag": "deficit", "red_alert": "red",
+    "roi_per_crew": "roi", "crews_needed": "crew_need", "density_crew_score": "priority_score",
+    "population_density_sqkm": "density", "bed_net_deficit": "unmet",
+}
+BACKEND_TRANSFER_MAP = {"patients_moved": "patients", "distance_km": "km"}
+BACKEND_CITY_MAP = {"beds_required": "demand", "bed_capacity": "capacity", "beds_routed": "routed", "beds_unmet": "unmet",
+                    "city_pool_exhausted": "exhausted"}
+BACKEND_TIER_MAP = {"Watch": "Medium"}  # backend labels its 2nd tier "Watch"; Phase 1 calls it Medium
+
+
+def adapt_result(r):
+    """Normalise a CommandResult (backend or preview) into the frames the UI and notify.py read.
+
+    Returns (wards, transfers, cities, alert_messages, source). Never mutates the backend result.
+    """
+    wards = r.wards.copy()
+    transfers = (r.transfers if r.transfers is not None else pd.DataFrame(columns=TRANSFER_COLS)).copy()
+    cities = r.cities.copy()
+    if "saline_required" in wards.columns:                      # backend contract
+        wards["tier_backend"] = wards["tier"]
+        wards["tier"] = wards["tier"].replace(BACKEND_TIER_MAP)
+        if "demand_basis" in wards.columns and "high_pred" in wards.columns:
+            wards["uses_p90"] = np.isclose(wards["demand_basis"], wards["high_pred"]) & (wards["demand_basis"] > wards["pred"])
+        wards = wards.drop(columns=[v for v in BACKEND_WARD_MAP.values() if v in wards.columns and v not in BACKEND_WARD_MAP])
+        wards = wards.rename(columns=BACKEND_WARD_MAP)
+        transfers = transfers.rename(columns=BACKEND_TRANSFER_MAP)
+        cities = cities.rename(columns=BACKEND_CITY_MAP)
+        if "utilization_pct" in cities.columns:
+            cities["utilization"] = cities["utilization_pct"] / 100.0
+        if "crew_ids" not in wards.columns:
+            order = wards[wards["crews"] > 0].sort_values(["crews", "priority_score" if "priority_score" in wards else "pred", "ward_id"],
+                                                         ascending=[False, False, True])
+            ids, k = {}, 0
+            for w, n in zip(order["ward_id"], order["crews"]):
+                ids[w] = ",".join(f"Crew-{k + j + 1:02d}" for j in range(int(n)))
+                k += int(n)
+            wards["crew_ids"] = wards["ward_id"].map(ids).fillna("")
+    if not transfers.empty:
+        sent = transfers.groupby("from_ward")["patients"].sum()
+        recv = transfers.groupby("to_ward")["patients"].sum()
+        wards["sent"] = wards["ward_id"].map(sent).fillna(0).astype(int)
+        wards["received"] = wards["ward_id"].map(recv).fillna(0).astype(int)
+    for col, default in [("sent", 0), ("received", 0), ("unmet", 0), ("crew_ids", ""), ("p90", np.nan),
+                         ("uses_p90", False), ("watch", False), ("deficit", False), ("red", False), ("code_black", False),
+                         ("crews", 0), ("prevented", 0.0)]:
+        if col not in wards.columns:
+            wards[col] = default
+    for col, default in [("routed", 0), ("unmet", 0), ("exhausted", False)]:
+        if col not in cities.columns:
+            cities[col] = default
+    if "utilization" not in cities.columns:
+        cities["utilization"] = np.where(cities["capacity"] > 0, cities["demand"] / cities["capacity"], 0.0)
+    for c in ("deficit", "red", "code_black", "uses_p90"):
+        wards[c] = wards[c].astype(bool)
+    cities["exhausted"] = cities["exhausted"].astype(bool)
+    alerts = [a.get("message", str(a)) if isinstance(a, dict) else str(a) for a in (r.alerts or [])]
+    return wards, transfers, cities, alerts, str(getattr(r, "source", "preview"))
+
+
 def get_engine():
     """Backend if it exists, otherwise the labelled preview."""
     try:
@@ -138,15 +200,10 @@ def is_offline() -> bool:
 def _run(issue: str, h: int, city: str | None, stock: int, buffer: int, crews: int, eff: float,
          reserve: int, ov_json: str, offline: bool):
     Params, run, kind = get_engine()
-    p = Params(issue_date=pd.Timestamp(issue), horizon=h, city=city, stock_pct=stock, buffer_pct=buffer,
+    p = Params(issue_date=issue if kind == "backend" else pd.Timestamp(issue), horizon=h, city=city, stock_pct=stock, buffer_pct=buffer,
                overrides=json.loads(ov_json) or None, total_crews=crews, efficacy=eff, reserve_beds=reserve, offline=offline)
-    r = run(p)
-    for col, default in [("sent", 0), ("received", 0), ("unmet", 0), ("crew_ids", ""), ("p90", np.nan),
-                         ("uses_p90", False), ("watch", False)]:
-        if col not in r.wards.columns:
-            r.wards[col] = default
-    return r.wards, (r.transfers if r.transfers is not None else pd.DataFrame(columns=TRANSFER_COLS)), r.cities, list(r.alerts or []), \
-        getattr(r, "source", kind), kind
+    wards, transfers, cities, alerts, source = adapt_result(run(p))
+    return wards, transfers, cities, alerts, source, kind
 
 
 # ------------------------------------------------------------------ small UI helpers
@@ -412,7 +469,7 @@ def _city_map(city, ws, transfers, is_bn):
 
 # ------------------------------------------------------------------ ③ simulator
 def _simulator(wards, issue_week, crews, eff, kind, is_bn):
-    if kind == "preview" or wards["prevented"].sum() == 0 and crews > 0 and "roi" not in wards.columns:
+    if kind == "preview" or (wards["prevented"].sum() == 0 and crews > 0):
         st.info(_t(is_bn, "The ML counterfactual (h2/h3/h4 LightGBM with reduced breeding-water features) comes from the backend. "
                           "Charts below fill in automatically when it is connected; crews shown now are a top-N preview.",
                    "এমএল কাউন্টারফ্যাকচুয়াল (প্রজনন-পানির ফিচার কমিয়ে h2/h3/h4 LightGBM) ব্যাকএন্ড থেকে আসবে। যুক্ত হলে নিচের চার্ট নিজে থেকেই ভরবে; এখনকার টিম top-N প্রিভিউ।"))
